@@ -1,0 +1,1307 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Botiquín · Salud familiar</title>
+<meta name="description" content="Registro de salud familiar: episodios, tratamientos y controles médicos.">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#2F6B63">
+<link rel="icon" href="icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Botiquín">
+<meta name="mobile-web-app-capable" content="yes">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+  :root{
+    --paper:#F0EFE2; --paper-2:#E7E4D3; --card:#FBFAF4;
+    --ink:#22302A; --ink-soft:#5B6660; --ink-faint:#8A9089;
+    --teal:#2F6B63; --teal-soft:#DCE8E3;
+    --amber:#C97F2E; --amber-soft:#F3E3C8;
+    --clay:#B85347; --clay-soft:#F1DAD3;
+    --sky:#5A7C9C; --sky-soft:#DCE5EC;
+    --mauve:#8B6C8E; --mauve-soft:#E8DFE8;
+    --line:#D9D3C0; --line-soft:#E5E1D2;
+    --radius:14px; --shadow:0 1px 2px rgba(34,48,42,0.06), 0 6px 20px -8px rgba(34,48,42,0.18);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{background:var(--paper); color:var(--ink); font-family:'Inter',sans-serif; -webkit-font-smoothing:antialiased; min-height:100vh;}
+  .mono{font-family:'IBM Plex Mono',monospace;}
+  h1,h2,h3,.display{font-family:'Fraunces',serif;}
+  button{font-family:inherit;}
+  ::selection{background:var(--teal-soft);}
+  a, button{cursor:pointer;}
+  :focus-visible{outline:2px solid var(--teal); outline-offset:2px; border-radius:4px;}
+  p{margin:0;}
+
+  #app{display:flex; min-height:100vh; max-width:1220px; margin:0 auto;}
+
+  /* ---------- RAIL ---------- */
+  .rail{width:224px; flex-shrink:0; padding:28px 14px 20px; display:flex; flex-direction:column; gap:4px; border-right:1px solid var(--line);}
+  .rail-brand{font-family:'Fraunces',serif; font-weight:600; font-size:19px; letter-spacing:-0.01em; padding:2px 12px 18px; display:flex; align-items:center; gap:8px;}
+  .rail-brand .dot{width:9px;height:9px;border-radius:50%;background:var(--teal); display:inline-block;}
+  .rail-tab{display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:10px; border:none; background:transparent; text-align:left; font-size:14.5px; font-weight:500; color:var(--ink-soft); width:100%; position:relative;}
+  .rail-tab:hover{background:var(--paper-2);}
+  .rail-tab.active{background:var(--card); color:var(--ink); box-shadow:var(--shadow);}
+  .rail-tab .avatar{width:24px;height:24px;border-radius:50%; display:flex;align-items:center;justify-content:center; font-size:10.5px;font-weight:700;color:#fff; flex-shrink:0;}
+  .rail-tab .home-ic{width:24px;height:24px;border-radius:7px;background:var(--paper-2); display:flex;align-items:center;justify-content:center; flex-shrink:0; font-size:13px;}
+  .rail-tab.active .home-ic{background:var(--teal-soft);}
+  .rail-tab .flag{position:absolute; right:8px; top:50%; transform:translateY(-50%); width:7px; height:7px; border-radius:50%; background:var(--clay);}
+  .rail-add{margin-top:10px; display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:10px; border:1px dashed var(--line); background:transparent; color:var(--ink-faint); font-size:13.5px; font-weight:500;}
+  .rail-add:hover{border-color:var(--teal); color:var(--teal);}
+  .rail-spacer{flex:1;}
+  .rail-foot{padding:10px 12px; font-size:11px; color:var(--ink-faint); line-height:1.5;}
+
+  /* ---------- MAIN ---------- */
+  .main{flex:1; min-width:0; padding:30px 34px 60px;}
+  .view{animation:fadein .2s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:translateY(0);}}
+
+  .crumb{display:flex; align-items:center; gap:6px; font-size:13px; color:var(--ink-faint); margin-bottom:14px;}
+  .crumb button{background:none; border:none; color:var(--ink-soft); font-size:13px; font-weight:600; padding:0;}
+  .crumb button:hover{color:var(--teal);}
+
+  .page-header{display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:24px;}
+  .page-header h1{font-size:25px; margin:0 0 4px; font-weight:600; letter-spacing:-0.01em;}
+  .page-header .sub{color:var(--ink-soft); font-size:13.5px;}
+  .header-actions{display:flex; gap:8px; flex-shrink:0;}
+  .member-header{display:flex; align-items:center; gap:14px;}
+  .member-avatar{width:48px;height:48px;border-radius:50%; display:flex;align-items:center;justify-content:center; font-size:17px;font-weight:700;color:#fff; flex-shrink:0;}
+
+  section.block{margin-bottom:32px;}
+  .block-title{display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; gap:10px;}
+  .block-title h2{font-size:14.5px; font-weight:600; margin:0; text-transform:uppercase; letter-spacing:.04em; color:var(--ink-soft); font-family:'Inter',sans-serif;}
+
+  .btn{display:inline-flex; align-items:center; gap:6px; padding:8px 14px; border-radius:9px; border:1px solid transparent; font-size:13.5px; font-weight:600; background:var(--teal); color:#fff; transition:filter .15s ease, transform .1s ease; white-space:nowrap;}
+  .btn:hover{filter:brightness(1.08);}
+  .btn:active{transform:scale(.98);}
+  .btn.ghost{background:transparent; border-color:var(--line); color:var(--ink-soft);}
+  .btn.ghost:hover{border-color:var(--ink-soft); color:var(--ink);}
+  .btn.danger{background:var(--clay);}
+  .btn.amber{background:var(--amber);}
+  .btn.small{padding:5px 10px; font-size:12.5px; border-radius:7px;}
+  .btn.subtle{background:var(--paper-2); color:var(--ink-soft);}
+  .btn.subtle:hover{background:var(--line-soft); color:var(--ink);}
+  .btn.block-w{width:100%; justify-content:center; padding:11px;}
+  .icon-btn{width:27px;height:27px;border-radius:7px;border:1px solid var(--line); background:var(--card); color:var(--ink-faint); display:flex; align-items:center;justify-content:center; font-size:12.5px; flex-shrink:0;}
+  .icon-btn:hover{color:var(--clay); border-color:var(--clay);}
+
+  .card{background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow); padding:18px 20px;}
+  .empty{border:1.5px dashed var(--line); border-radius:var(--radius); padding:24px 22px; text-align:center; color:var(--ink-soft); font-size:13.5px;}
+  .empty .big{font-family:'Fraunces',serif; font-size:16px; color:var(--ink); margin-bottom:4px; display:block;}
+
+  /* ---------- PASTILLERO ---------- */
+  .pastillero{display:flex; gap:12px; overflow-x:auto; padding:4px 2px 10px;}
+  .dose-group{display:flex; flex-direction:column; gap:8px; min-width:132px;}
+  .dose-group .who{display:flex; align-items:center; gap:6px; font-size:12px; font-weight:600; color:var(--ink-soft); padding-left:2px;}
+  .dose-group .who .dot{width:8px;height:8px;border-radius:50%; flex-shrink:0;}
+  .capsule{display:flex; align-items:center; gap:9px; background:var(--card); border:1px solid var(--line-soft); border-radius:11px; padding:9px 11px; box-shadow:var(--shadow); transition:transform .12s ease, background .15s ease;}
+  .capsule:hover{transform:translateY(-1px);}
+  .capsule.taken{background:var(--teal-soft); border-color:var(--teal);}
+  .capsule .check{width:19px;height:19px;border-radius:50%; border:1.6px solid var(--line); flex-shrink:0; display:flex; align-items:center;justify-content:center; font-size:11px; color:#fff; background:#fff;}
+  .capsule.taken .check{background:var(--teal); border-color:var(--teal);}
+  .capsule .info{display:flex; flex-direction:column; min-width:0;}
+  .capsule .time{font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--ink-soft);}
+  .capsule .name{font-size:12.5px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:120px;}
+  .capsule.taken .name{text-decoration:line-through; color:var(--ink-soft);}
+  .capsule-btn{all:unset; cursor:pointer; display:flex; align-items:center; gap:9px; width:100%;}
+
+  /* ---------- TIMELINE (evolución) ---------- */
+  .timeline{position:relative; padding-left:30px;}
+  .timeline:before{content:""; position:absolute; left:11px; top:6px; bottom:6px; width:1.5px; background:var(--line);}
+  .t-item{position:relative; margin-bottom:16px;}
+  .t-item:last-child{margin-bottom:0;}
+  .ev-ic{position:absolute; left:-30px; top:0; width:23px;height:23px;border-radius:50%; background:var(--card); border:1.5px solid var(--line); display:flex; align-items:center; justify-content:center; font-size:11.5px;}
+  .ev-ic.temperature{border-color:var(--sky); background:var(--sky-soft);}
+  .ev-ic.symptom{border-color:var(--clay); background:var(--clay-soft);}
+  .ev-ic.medication{border-color:var(--teal); background:var(--teal-soft);}
+  .ev-ic.note{border-color:var(--line); background:var(--paper-2);}
+  .ev-ic.consultation{border-color:var(--amber); background:var(--amber-soft);}
+  .ev-ic.start{border-color:var(--clay); background:var(--clay-soft);}
+  .ev-ic.recovered{border-color:var(--teal); background:var(--teal-soft);}
+  .t-card{background:var(--card); border-radius:12px; box-shadow:var(--shadow); padding:11px 15px;}
+  .t-top{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:3px;}
+  .t-date{font-family:'IBM Plex Mono',monospace; font-size:11.5px; color:var(--ink-faint);}
+  .t-title{font-weight:600; font-size:13.5px;}
+  .t-notes{font-size:12.5px; color:var(--ink-soft); line-height:1.5; margin-top:3px;}
+  .t-actions{display:flex; gap:5px; flex-shrink:0;}
+
+  /* ---------- badges / chips ---------- */
+  .badge{font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:.03em; padding:2.5px 7px; border-radius:5px; display:inline-block;}
+  .badge.active{background:var(--clay-soft); color:var(--clay);}
+  .badge.recovered{background:var(--teal-soft); color:var(--teal);}
+  .badge.control{background:var(--sky-soft); color:var(--sky);}
+  .badge.reminder{background:var(--amber-soft); color:var(--amber);}
+  .day-badge{font-family:'IBM Plex Mono',monospace; font-size:11.5px; background:var(--paper-2); color:var(--ink-soft); padding:3px 9px; border-radius:20px; font-weight:500;}
+
+  .chip{display:inline-flex; align-items:center; gap:5px; padding:6px 12px; border-radius:20px; border:1.5px solid var(--line); background:#fff; font-size:12.5px; font-weight:500; color:var(--ink-soft);}
+  .chip.selected{border-color:var(--teal); background:var(--teal-soft); color:var(--teal);}
+  .chip-wrap{display:flex; flex-wrap:wrap; gap:7px;}
+
+  /* ---------- Inicio dashboard ---------- */
+  .greet{margin-bottom:26px;}
+  .greet h1{font-size:26px; margin:0 0 3px;}
+  .greet .sub{color:var(--ink-soft); font-size:13.5px;}
+  .family-row{display:flex; align-items:center; gap:12px; padding:11px 4px; border-bottom:1px solid var(--line-soft);}
+  .family-row:last-child{border-bottom:none;}
+  .family-row .name{font-weight:600; font-size:13.5px; width:110px; flex-shrink:0;}
+  .status-chip{font-size:12px; color:var(--ink-soft);}
+  .status-chip.alert{color:var(--clay); font-weight:600;}
+  .status-chip.ok{color:var(--ink-faint);}
+  .status-chip.med{color:var(--teal); font-weight:600;}
+
+  .now-card{background:var(--card); border-radius:16px; box-shadow:var(--shadow); padding:20px 22px; border-left:4px solid var(--amber);}
+  .now-card.overdue{border-left-color:var(--clay);}
+  .now-card .eyebrow{font-size:11px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:var(--amber); margin-bottom:8px;}
+  .now-card.overdue .eyebrow{color:var(--clay);}
+  .now-card .med-line{font-family:'Fraunces',serif; font-size:19px; font-weight:600; margin-bottom:2px;}
+  .now-card .who-line{font-size:13px; color:var(--ink-soft); margin-bottom:14px;}
+  .now-card .time-line{font-family:'IBM Plex Mono',monospace; font-size:13px; color:var(--ink-soft); margin-bottom:14px;}
+
+  .ep-card{background:var(--card); border-radius:14px; box-shadow:var(--shadow); padding:15px 18px; display:flex; align-items:center; gap:13px; margin-bottom:10px;}
+  .ep-card:last-child{margin-bottom:0;}
+  .ep-card .ep-icon{width:38px;height:38px;border-radius:11px; background:var(--clay-soft); display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0;}
+  .ep-card .ep-main{flex:1; min-width:0;}
+  .ep-card .ep-title{font-weight:600; font-size:14px;}
+  .ep-card .ep-sub{font-size:12px; color:var(--ink-soft); margin-top:1px;}
+  .ep-card-btn{all:unset; cursor:pointer; display:flex; align-items:center; gap:13px; flex:1; min-width:0;}
+
+  .stats-strip{display:flex; gap:22px; margin-top:6px; padding:12px 4px; border-top:1px solid var(--line-soft);}
+  .stats-strip .s-num{font-family:'Fraunces',serif; font-weight:600; font-size:16px;}
+  .stats-strip .s-lbl{font-size:11px; color:var(--ink-faint);}
+
+  .list-simple{display:flex; flex-direction:column;}
+  .li-row{display:flex; align-items:center; gap:12px; padding:11px 4px; border-bottom:1px solid var(--line-soft);}
+  .li-row:last-child{border-bottom:none;}
+  .li-dot{width:8px;height:8px;border-radius:50%; flex-shrink:0;}
+  .li-main{flex:1; min-width:0;}
+  .li-title{font-size:13.5px; font-weight:600;}
+  .li-sub{font-size:12px; color:var(--ink-soft);}
+  .li-date{font-family:'IBM Plex Mono',monospace; font-size:11.5px; color:var(--ink-faint); flex-shrink:0;}
+
+  /* ---------- Episode page ---------- */
+  .ep-header{display:flex; align-items:flex-start; gap:14px; margin-bottom:22px;}
+  .ep-header .big-icon{width:52px;height:52px;border-radius:14px; background:var(--clay-soft); display:flex; align-items:center; justify-content:center; font-size:24px; flex-shrink:0;}
+  .ep-header.recovered .big-icon{background:var(--teal-soft);}
+  .ep-header h1{font-size:23px; margin:0 0 5px;}
+  .ep-header .meta-row{display:flex; align-items:center; gap:9px; flex-wrap:wrap;}
+
+  .status-row{display:flex; gap:14px; flex-wrap:wrap; margin-bottom:28px;}
+  .status-box{background:var(--card); border-radius:14px; box-shadow:var(--shadow); padding:15px 18px; flex:1; min-width:180px;}
+  .status-box .lbl{font-size:11px; text-transform:uppercase; letter-spacing:.04em; color:var(--ink-faint); font-weight:700; margin-bottom:7px;}
+  .status-box .temp-val{font-family:'Fraunces',serif; font-size:26px; font-weight:600;}
+  .status-box .temp-when{font-size:11.5px; color:var(--ink-faint); margin-top:2px;}
+  .symptom-tag{display:inline-flex; align-items:center; gap:5px; background:var(--clay-soft); color:var(--clay); font-size:12px; font-weight:600; padding:4px 10px; border-radius:20px; margin:0 5px 5px 0;}
+  .symptom-tag.improving{background:var(--amber-soft); color:var(--amber);}
+
+  .action-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:8px;}
+  .action-tile{display:flex; flex-direction:column; align-items:center; gap:6px; padding:14px 8px; border-radius:12px; border:1.5px solid var(--line); background:#fff; font-size:12px; font-weight:600; color:var(--ink-soft);}
+  .action-tile:hover{border-color:var(--teal); color:var(--teal); background:var(--teal-soft);}
+  .action-tile .em{font-size:20px;}
+
+  .summary-card{background:var(--teal-soft); border-radius:16px; padding:20px 22px; margin-bottom:24px;}
+  .summary-card h3{margin:0 0 10px; font-size:17px;}
+  .summary-grid{display:grid; grid-template-columns:1fr 1fr; gap:12px; font-size:12.5px;}
+  .summary-grid .lbl{color:var(--teal); font-weight:700; text-transform:uppercase; font-size:10.5px; letter-spacing:.04em; margin-bottom:3px;}
+
+  /* ---------- MODAL ---------- */
+  .overlay{position:fixed; inset:0; background:rgba(34,48,42,0.4); backdrop-filter:blur(2px); display:flex; align-items:center; justify-content:center; padding:20px; z-index:50; animation:fadein .15s ease; overflow-y:auto;}
+  .modal{background:var(--card); border-radius:16px; padding:26px 26px 22px; width:100%; max-width:460px; max-height:88vh; overflow-y:auto; box-shadow:0 20px 60px -12px rgba(0,0,0,0.35);}
+  .modal h3{font-size:18px; margin:0 0 4px; font-weight:600;}
+  .modal .modal-sub{font-size:12.5px; color:var(--ink-soft); margin-bottom:16px;}
+  .field{margin-bottom:14px;}
+  .field label{display:block; font-size:12.5px; font-weight:600; color:var(--ink-soft); margin-bottom:5px;}
+  .field input[type=text], .field input[type=number], .field input[type=date], .field input[type=time], .field textarea, .field select{
+    width:100%; padding:9px 11px; border-radius:9px; border:1px solid var(--line); background:#fff; font-family:'Inter',sans-serif; font-size:13.5px; color:var(--ink);
+  }
+  .field textarea{resize:vertical; min-height:60px;}
+  .field-row{display:flex; gap:10px;}
+  .field-row .field{flex:1;}
+  .hint{font-size:11.5px; color:var(--ink-faint); margin-top:4px;}
+  .swatches{display:flex; gap:8px; flex-wrap:wrap;}
+  .swatch{width:28px;height:28px;border-radius:50%; border:2px solid transparent; position:relative;}
+  .swatch.selected{border-color:var(--ink);}
+  .swatch.selected:after{content:"✓"; position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:#fff; font-size:12px;}
+  .radio-toggle{display:flex; flex-direction:column; gap:8px;}
+  .radio-opt{display:flex; align-items:center; gap:9px; padding:10px 12px; border-radius:10px; border:1.5px solid var(--line); font-size:13px; font-weight:500; color:var(--ink-soft); text-align:left;}
+  .radio-opt.selected{border-color:var(--teal); background:var(--teal-soft); color:var(--teal); font-weight:600;}
+  .radio-opt .rdot{width:15px;height:15px;border-radius:50%; border:1.6px solid var(--line); flex-shrink:0; display:flex; align-items:center; justify-content:center;}
+  .radio-opt.selected .rdot{border-color:var(--teal);}
+  .radio-opt.selected .rdot:after{content:""; width:8px;height:8px;border-radius:50%; background:var(--teal);}
+  .modal-actions{display:flex; justify-content:flex-end; gap:8px; margin-top:20px;}
+  .modal p.confirm-msg{font-size:14px; color:var(--ink-soft); line-height:1.5; margin:0 0 4px;}
+  .action-chooser-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+  .action-chooser-tile{display:flex; align-items:center; gap:10px; padding:14px 14px; border-radius:12px; border:1.5px solid var(--line); background:#fff; font-size:13px; font-weight:600; color:var(--ink);}
+  .action-chooser-tile:hover{border-color:var(--teal); background:var(--teal-soft);}
+  .action-chooser-tile .em{font-size:19px;}
+  .checkbox-row{display:flex; align-items:center; gap:8px; font-size:13px; color:var(--ink-soft); margin-top:4px;}
+
+  @media (prefers-reduced-motion: reduce){ *{animation:none !important; transition:none !important;} }
+
+  .busy-toast{
+    position:fixed; bottom:20px; right:20px; z-index:100;
+    display:flex; align-items:center; gap:9px;
+    background:var(--ink); color:#fff; font-size:13px; font-weight:600;
+    padding:10px 16px; border-radius:30px; box-shadow:0 8px 24px -6px rgba(0,0,0,0.35);
+  }
+  .busy-toast .spin{width:14px;height:14px;border-radius:50%; border:2px solid rgba(255,255,255,0.35); border-top-color:#fff; animation:spin .7s linear infinite; flex-shrink:0;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  @media (max-width: 760px){
+    #app{flex-direction:column;}
+    .rail{width:100%; flex-direction:row; overflow-x:auto; border-right:none; border-bottom:1px solid var(--line); padding:14px 12px; align-items:center; gap:6px;}
+    .rail-brand{padding:0 8px 0 0;}
+    .rail-spacer{display:none;} .rail-foot{display:none;}
+    .rail-foot.warn{display:block; width:100%; order:99; color:var(--clay); font-weight:600;}
+    .rail-tab{white-space:nowrap; width:auto;}
+    .rail-add{white-space:nowrap;}
+    .main{padding:20px 15px 50px;}
+    .page-header{flex-direction:column; align-items:stretch;}
+    .action-grid{grid-template-columns:repeat(2,1fr);}
+    .action-chooser-grid{grid-template-columns:1fr;}
+    .status-row{flex-direction:column;}
+    .summary-grid{grid-template-columns:1fr;}
+  }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="busy-toast" class="busy-toast" style="display:none;"><span class="spin"></span>Guardando…</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var STORAGE_KEY = "familia-salud-data-v2";
+  var PALETTE = ["#2F6B63","#B85347","#5A7C9C","#C97F2E","#8B6C8E","#748A4E"];
+  var CATEGORY_SUGGESTIONS = ["Resfrío","Fiebre","Dolor de estómago","Gastroenteritis","Dolor","Alergia","Lesión","Otro"];
+  var CATEGORY_ICONS = {"Resfrío":"🤧","Fiebre":"🌡️","Dolor de estómago":"🤢","Gastroenteritis":"🤢","Dolor":"😣","Alergia":"🤧","Lesión":"🤕","Otro":"🤒"};
+  var SYMPTOM_SUGGESTIONS = ["Fiebre","Tos","Congestión","Dolor de garganta","Dolor de cabeza","Dolor de estómago","Náuseas","Vómitos","Diarrea","Decaimiento"];
+  var FREQUENCY_OPTIONS = ["Cada 6 horas","Cada 8 horas","Cada 12 horas","Una vez al día","Dos veces al día","Tres veces al día","Días alternos","Semanal","Horarios específicos","Según necesidad"];
+  var EVENT_ICON = {temperature:"🌡️", symptom:"🤒", medication:"💊", note:"📝", consultation:"🩺"};
+
+  var state = { members: [], episodes: [], episodeEvents: [], treatments: [], medicationLogs: [], controls: [] };
+  var ui = { route: {name:"inicio"}, modal: null, symptomDraft: [] };
+
+  /* ---------------- storage ---------------- */
+  function storageAvailable(){
+    try{
+      var t = "__botiquin_test__";
+      window.localStorage.setItem(t, "1");
+      window.localStorage.removeItem(t);
+      return true;
+    } catch(e){ return false; }
+  }
+  var STORAGE_OK = storageAvailable();
+
+  var busy = false;
+  var busyToken = 0;
+  function setBusy(v){
+    busy = v;
+    var t = document.getElementById("busy-toast");
+    if(!t) return;
+    if(v){
+      busyToken++;
+      var myToken = busyToken;
+      t.style.display = "flex";
+      setTimeout(function(){ if(busy && busyToken===myToken) setBusy(false); }, 8000);
+    } else {
+      t.style.display = "none";
+    }
+  }
+
+  function loadState(){
+    if(!STORAGE_OK) return Promise.resolve();
+    try{
+      var raw = window.localStorage.getItem(STORAGE_KEY);
+      if(raw){ try{ var p = JSON.parse(raw); Object.assign(state, p); }catch(e){} }
+    } catch(e){}
+    return Promise.resolve();
+  }
+  function saveState(){
+    if(!STORAGE_OK) return Promise.resolve();
+    setBusy(true);
+    try{
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      setBusy(false);
+    } catch(e){ console.error("No se pudo guardar", e); setBusy(false); }
+    return Promise.resolve();
+  }
+
+  /* ---------------- helpers ---------------- */
+  function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
+  function todayISO(){ return new Date().toISOString().slice(0,10); }
+  function nowHM(){ var d=new Date(); return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0"); }
+  function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); }
+  function fmtDate(iso){ if(!iso) return ""; var d=new Date(iso+"T00:00:00"); if(isNaN(d)) return iso; return d.toLocaleDateString("es-ES",{day:"2-digit",month:"short",year:"numeric"}); }
+  function fmtDateShort(iso){ if(!iso) return ""; var d=new Date(iso+"T00:00:00"); if(isNaN(d)) return iso; return d.toLocaleDateString("es-ES",{day:"2-digit",month:"short"}); }
+  function ageFromBirthdate(iso){ if(!iso) return null; var b=new Date(iso+"T00:00:00"); if(isNaN(b)) return null; var t=new Date(); var age=t.getFullYear()-b.getFullYear(); var m=t.getMonth()-b.getMonth(); if(m<0||(m===0&&t.getDate()<b.getDate())) age--; return age; }
+  function getMember(id){ return state.members.find(function(m){ return m.id===id; }); }
+  function getEpisode(id){ return state.episodes.find(function(e){ return e.id===id; }); }
+  function getTreatment(id){ return state.treatments.find(function(t){ return t.id===id; }); }
+  function initials(name){ var p=(name||"").trim().split(/\s+/); if(!p[0]) return "?"; return (p[0][0]+(p[1]?p[1][0]:"")).toUpperCase(); }
+  function timeToMinutes(str){ if(!str) return 0; var p=str.split(":"); return (+p[0])*60+(+p[1]); }
+  function fmtMinutes(m){ m=Math.max(0,Math.round(m)); var h=Math.floor(m/60), mm=m%60; if(h>0) return h+"h "+mm+"min"; return mm+"min"; }
+  function diffLabel(diff){ if(diff<0) return "hace "+fmtMinutes(-diff); if(diff===0) return "ahora"; return "en "+fmtMinutes(diff); }
+  function daysBetween(startISO, endISO){ var a=new Date(startISO+"T00:00:00"); var b=new Date(endISO+"T00:00:00"); return Math.round((b-a)/86400000); }
+  function episodeDay(ep){ var n = daysBetween(ep.startDate, ep.status==="recovered" && ep.endDate ? ep.endDate : todayISO()) + 1; return Math.max(1,n); }
+  function catIcon(cat){ return CATEGORY_ICONS[cat] || "🤒"; }
+  function parseTimes(str){ return (str||"").split(/[,;]+/).map(function(s){ return s.trim(); }).filter(Boolean).sort(); }
+  function normalizeTreatmentTimes(){
+    var changed = false;
+    state.treatments.forEach(function(t){
+      if(!Array.isArray(t.times)) return;
+      var flat = [];
+      t.times.forEach(function(x){ flat = flat.concat(parseTimes(x)); });
+      var seen = {}; var clean = [];
+      flat.forEach(function(x){ if(!seen[x]){ seen[x]=true; clean.push(x); } });
+      clean.sort();
+      if(JSON.stringify(clean) !== JSON.stringify(t.times)){ t.times = clean; changed = true; }
+    });
+    return changed;
+  }
+
+  /* ---------------- domain queries ---------------- */
+  function membersSorted(){ return state.members; }
+  function episodesForMember(id){ return state.episodes.filter(function(e){ return e.memberId===id; }).sort(function(a,b){ return (b.startDate+b.startTime).localeCompare(a.startDate+a.startTime); }); }
+  function activeEpisodesForMember(id){ return episodesForMember(id).filter(function(e){ return e.status==="active"; }); }
+  function pastEpisodesForMember(id){ return episodesForMember(id).filter(function(e){ return e.status==="recovered"; }); }
+  function allActiveEpisodes(){ return state.episodes.filter(function(e){ return e.status==="active"; }).sort(function(a,b){ return (b.startDate+b.startTime).localeCompare(a.startDate+a.startTime); }); }
+  function eventsForEpisode(epId){ return state.episodeEvents.filter(function(e){ return e.episodeId===epId; }); }
+
+  function isTreatmentActive(t, dateISO){ dateISO = dateISO || todayISO(); if(t.startDate && t.startDate > dateISO) return false; if(t.endDate && t.endDate < dateISO) return false; return true; }
+  function treatmentsForMember(id){ return state.treatments.filter(function(t){ return t.memberId===id; }).sort(function(a,b){ return (isTreatmentActive(b)?1:0)-(isTreatmentActive(a)?1:0); }); }
+  function chronicTreatmentsForMember(id){ return treatmentsForMember(id).filter(function(t){ return !t.episodeId; }); }
+  function treatmentsForEpisode(epId){ return state.treatments.filter(function(t){ return t.episodeId===epId; }); }
+  function activeTreatmentsForMember(id){ return state.treatments.filter(function(t){ return t.memberId===id && isTreatmentActive(t); }); }
+
+  function getDoseLog(treatmentId, date, time){ return state.medicationLogs.find(function(l){ return l.treatmentId===treatmentId && l.scheduledDate===date && l.scheduledTime===time; }); }
+  function toggleDose(treatmentId, time){
+    var date = todayISO();
+    var existing = getDoseLog(treatmentId, date, time);
+    if(existing){ state.medicationLogs = state.medicationLogs.filter(function(l){ return l.id!==existing.id; }); }
+    else {
+      var t = getTreatment(treatmentId);
+      state.medicationLogs.push({ id:uid(), treatmentId:treatmentId, memberId:t?t.memberId:null, episodeId:t?t.episodeId||null:null, scheduledDate:date, scheduledTime:time, actualTime:nowHM() });
+    }
+    saveState(); render();
+  }
+  function todaysDosesForTreatment(t){
+    if(!isTreatmentActive(t)) return [];
+    var date = todayISO();
+    return (t.times||[]).map(function(time){
+      var log = getDoseLog(t.id, date, time);
+      return { treatmentId:t.id, time:time, name:t.name, dose:t.dose, taken:!!log, diff: timeToMinutes(time)-timeToMinutes(nowHM()) };
+    }).sort(function(a,b){ return a.time.localeCompare(b.time); });
+  }
+  function todaysDosesForMember(id){
+    var doses = [];
+    activeTreatmentsForMember(id).forEach(function(t){ doses = doses.concat(todaysDosesForTreatment(t)); });
+    doses.sort(function(a,b){ return a.time.localeCompare(b.time); });
+    return doses;
+  }
+  function nextDoseAcrossFamily(){
+    var all = [];
+    state.members.forEach(function(m){
+      todaysDosesForMember(m.id).filter(function(d){ return !d.taken; }).forEach(function(d){ all.push(Object.assign({}, d, {member:m})); });
+    });
+    var overdue = all.filter(function(d){ return d.diff<0; }).sort(function(a,b){ return a.diff-b.diff; });
+    var upcoming = all.filter(function(d){ return d.diff>=0; }).sort(function(a,b){ return a.diff-b.diff; });
+    return overdue[0] || upcoming[0] || null;
+  }
+
+  function latestTemperature(epId){
+    var temps = eventsForEpisode(epId).filter(function(e){ return e.type==="temperature"; }).sort(function(a,b){ return (b.date+b.time).localeCompare(a.date+a.time); });
+    return temps[0] || null;
+  }
+  function maxTemperature(epId){
+    var temps = eventsForEpisode(epId).filter(function(e){ return e.type==="temperature"; });
+    if(!temps.length) return null;
+    return temps.reduce(function(max,e){ return e.data.value>max ? e.data.value : max; }, -Infinity);
+  }
+  function activeSymptoms(epId){
+    var evs = eventsForEpisode(epId).filter(function(e){ return e.type==="symptom"; });
+    var byName = {};
+    evs.forEach(function(e){
+      var key = (e.data.symptom||"").trim().toLowerCase();
+      if(!key) return;
+      var stamp = e.date+e.time+e.createdAt;
+      if(!byName[key] || stamp > byName[key].stamp){ byName[key] = { name:e.data.symptom, status:e.data.status, stamp:stamp }; }
+    });
+    return Object.keys(byName).map(function(k){ return byName[k]; }).filter(function(s){ return s.status !== "Resuelto"; });
+  }
+  function distinctSymptomNames(epId){
+    var evs = eventsForEpisode(epId).filter(function(e){ return e.type==="symptom"; });
+    var set = {};
+    evs.forEach(function(e){ if(e.data.symptom) set[e.data.symptom]=true; });
+    return Object.keys(set);
+  }
+  function consultationsForEpisode(epId){ return eventsForEpisode(epId).filter(function(e){ return e.type==="consultation"; }); }
+
+  /* ---------------- mutations: members ---------------- */
+  function upsertMember(data){
+    if(data.id){ Object.assign(getMember(data.id), data); }
+    else { data.id = uid(); if(!data.color) data.color = PALETTE[state.members.length % PALETTE.length]; state.members.push(data); ui.route = {name:"member", id:data.id}; }
+    saveState();
+  }
+  function deleteMember(id){
+    var epIds = state.episodes.filter(function(e){ return e.memberId===id; }).map(function(e){ return e.id; });
+    var trIds = state.treatments.filter(function(t){ return t.memberId===id; }).map(function(t){ return t.id; });
+    state.members = state.members.filter(function(m){ return m.id!==id; });
+    state.episodes = state.episodes.filter(function(e){ return e.memberId!==id; });
+    state.episodeEvents = state.episodeEvents.filter(function(e){ return epIds.indexOf(e.episodeId)===-1; });
+    state.treatments = state.treatments.filter(function(t){ return t.memberId!==id; });
+    state.medicationLogs = state.medicationLogs.filter(function(l){ return trIds.indexOf(l.treatmentId)===-1; });
+    state.controls = state.controls.filter(function(c){ return c.memberId!==id; });
+    if(ui.route.name==="member" && ui.route.id===id) ui.route={name:"inicio"};
+    saveState();
+  }
+
+  /* ---------------- mutations: episodes ---------------- */
+  function createEpisode(form){
+    var ep = { id:uid(), memberId:form.memberId, title:form.title, category:form.category, startDate:form.startDate, startTime:form.startTime, endDate:null, status:"active", initialNotes:form.notes||"", recoveryNote:"" };
+    state.episodes.push(ep);
+    (form.symptoms||[]).forEach(function(s){
+      state.episodeEvents.push({ id:uid(), episodeId:ep.id, memberId:ep.memberId, type:"symptom", date:form.startDate, time:form.startTime, data:{symptom:s, status:"Activo"}, createdAt:Date.now() });
+    });
+    if(form.temperature){
+      state.episodeEvents.push({ id:uid(), episodeId:ep.id, memberId:ep.memberId, type:"temperature", date:form.startDate, time:form.startTime, data:{value:parseFloat(form.temperature)}, createdAt:Date.now() });
+    }
+    if(form.notes){
+      state.episodeEvents.push({ id:uid(), episodeId:ep.id, memberId:ep.memberId, type:"note", date:form.startDate, time:form.startTime, data:{text:form.notes}, createdAt:Date.now() });
+    }
+    saveState();
+    return ep;
+  }
+  function updateEpisodeMeta(id, patch){ Object.assign(getEpisode(id), patch); saveState(); }
+  function closeEpisode(id, endDate, note){ var ep=getEpisode(id); ep.status="recovered"; ep.endDate=endDate; ep.recoveryNote=note||""; saveState(); }
+  function reopenEpisode(id){ var ep=getEpisode(id); ep.status="active"; ep.endDate=null; saveState(); }
+  function deleteEpisode(id){
+    var trIds = state.treatments.filter(function(t){ return t.episodeId===id; }).map(function(t){ return t.id; });
+    state.episodes = state.episodes.filter(function(e){ return e.id!==id; });
+    state.episodeEvents = state.episodeEvents.filter(function(e){ return e.episodeId!==id; });
+    state.treatments = state.treatments.filter(function(t){ return t.episodeId!==id; });
+    state.medicationLogs = state.medicationLogs.filter(function(l){ return trIds.indexOf(l.treatmentId)===-1; });
+    if(ui.route.name==="episode" && ui.route.id===id) ui.route={name:"inicio"};
+    saveState();
+  }
+  function addEpisodeEvent(episodeId, memberId, type, date, time, data){
+    state.episodeEvents.push({ id:uid(), episodeId:episodeId, memberId:memberId, type:type, date:date, time:time, data:data, createdAt:Date.now() });
+    saveState();
+  }
+  function deleteEpisodeEvent(id){ state.episodeEvents = state.episodeEvents.filter(function(e){ return e.id!==id; }); saveState(); }
+
+  /* ---------------- mutations: treatments / controls ---------------- */
+  function upsertTreatment(data){
+    if(data.id){ Object.assign(getTreatment(data.id), data); }
+    else { data.id = uid(); state.treatments.push(data); }
+    saveState();
+  }
+  function deleteTreatment(id){
+    state.treatments = state.treatments.filter(function(t){ return t.id!==id; });
+    state.medicationLogs = state.medicationLogs.filter(function(l){ return l.treatmentId!==id; });
+    saveState();
+  }
+  function upsertControl(data){
+    if(data.id){ Object.assign(state.controls.find(function(c){ return c.id===data.id; }), data); }
+    else { data.id = uid(); state.controls.push(data); }
+    saveState();
+  }
+  function deleteControl(id){ state.controls = state.controls.filter(function(c){ return c.id!==id; }); saveState(); }
+
+  /* ================= RENDER ================= */
+  function render(){
+    var app = document.getElementById("app");
+    app.innerHTML = renderRail() + renderMain() + renderModal();
+    attachEvents();
+  }
+
+  function activeMemberIdForRail(){
+    if(ui.route.name==="member") return ui.route.id;
+    if(ui.route.name==="episode"){ var ep=getEpisode(ui.route.id); return ep?ep.memberId:null; }
+    return null;
+  }
+
+  function renderRail(){
+    var activeId = activeMemberIdForRail();
+    var html = '<div class="rail">';
+    html += '<div class="rail-brand"><span class="dot"></span>Botiquín</div>';
+    html += '<button class="rail-tab ' + (ui.route.name==="inicio"?"active":"") + '" data-action="goto" data-route="inicio"><span class="home-ic">⌂</span> Inicio</button>';
+    state.members.forEach(function(m){
+      var hasActive = activeEpisodesForMember(m.id).length>0;
+      html += '<button class="rail-tab ' + (activeId===m.id?"active":"") + '" data-action="goto" data-route="member" data-id="' + m.id + '">' +
+        '<span class="avatar" style="background:' + m.color + '">' + esc(initials(m.name)) + '</span><span>' + esc(m.name) + '</span>' +
+        (hasActive ? '<span class="flag"></span>' : '') + '</button>';
+    });
+    html += '<button class="rail-add" data-action="open-member-form"><span>+</span> Agregar familiar</button>';
+    html += '<div class="rail-spacer"></div>';
+    html += '<div class="rail-foot' + (STORAGE_OK?'':' warn') + '">' + (STORAGE_OK ? 'Tus datos se guardan en este navegador/dispositivo.' : '⚠️ Este navegador bloqueó el guardado local: los datos se van a perder al cerrar la página.') + '</div>';
+    html += '</div>';
+    return html;
+  }
+
+  function renderMain(){
+    var body;
+    if(ui.route.name==="inicio") body = renderInicio();
+    else if(ui.route.name==="member") body = renderMemberPage(ui.route.id);
+    else if(ui.route.name==="episode") body = renderEpisodePage(ui.route.id);
+    else body = renderInicio();
+    return '<div class="main"><div class="view">' + body + '</div></div>';
+  }
+
+  /* ---------------- Inicio ---------------- */
+  function renderInicio(){
+    if(state.members.length===0){
+      return '<div class="greet"><h1>Bienvenido a tu botiquín</h1><div class="sub">Un lugar para llevar el control de salud de toda la familia.</div></div>' +
+        '<div class="empty"><span class="big">Todavía no agregaste a nadie</span>Agregá al primer integrante para empezar a registrar episodios, controles y medicamentos.<br><br>' +
+        '<button class="btn" data-action="open-member-form">+ Agregar familiar</button></div>';
+    }
+    var date = todayISO();
+    var html = '<div class="greet"><h1>Hoy, ' + fmtDate(date) + '</h1><div class="sub">Qué está pasando hoy en tu familia.</div></div>';
+
+    // Tu familia
+    html += '<section class="block"><div class="block-title"><h2>Tu familia</h2></div><div class="card"><div class="list-simple" style="border:none;">';
+    state.members.forEach(function(m){
+      var actEps = activeEpisodesForMember(m.id);
+      var chronic = chronicTreatmentsForMember(m.id).filter(function(t){ return isTreatmentActive(t); });
+      var statusHtml;
+      if(actEps.length){ statusHtml = '<span class="status-chip alert">' + catIcon(actEps[0].category) + ' ' + esc(actEps[0].title) + ' · Día ' + episodeDay(actEps[0]) + '</span>'; }
+      else if(chronic.length){ statusHtml = '<span class="status-chip med">💊 Tratamiento activo</span>'; }
+      else { statusHtml = '<span class="status-chip ok">Sin novedades</span>'; }
+      html += '<div class="family-row"><button class="ep-card-btn" data-action="goto" data-route="member" data-id="' + m.id + '" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:12px;flex:1;">' +
+        '<span class="name" style="display:flex;align-items:center;gap:8px;"><span style="width:9px;height:9px;border-radius:50%;background:' + m.color + ';display:inline-block;"></span>' + esc(m.name) + '</span>' + statusHtml + '</button></div>';
+    });
+    html += '</div></div></section>';
+
+    // Ahora
+    var nowDose = nextDoseAcrossFamily();
+    html += '<section class="block"><div class="block-title"><h2>Ahora</h2></div>';
+    if(!nowDose){
+      html += '<div class="empty">Todo al día — no hay tomas pendientes en este momento.</div>';
+    } else {
+      html += '<div class="now-card ' + (nowDose.diff<0?"overdue":"") + '">' +
+        '<div class="eyebrow">' + (nowDose.diff<0?"Toma atrasada":"Próxima toma") + ' · ' + esc(nowDose.member.name) + '</div>' +
+        '<div class="med-line">💊 ' + esc(nowDose.name) + (nowDose.dose?' · '+esc(nowDose.dose):'') + '</div>' +
+        '<div class="time-line mono">' + esc(nowDose.time) + ' · ' + diffLabel(nowDose.diff) + '</div>' +
+        '<button class="btn" data-action="toggle-dose" data-treatment="' + nowDose.treatmentId + '" data-time="' + nowDose.time + '">Marcar tomado</button>' +
+        '</div>';
+    }
+    html += '</section>';
+
+    // Episodios activos
+    var actives = allActiveEpisodes();
+    html += '<section class="block"><div class="block-title"><h2>Episodios activos</h2><button class="btn small subtle" data-action="open-episode-form">+ Nuevo episodio</button></div>';
+    if(actives.length===0){
+      html += '<div class="empty">Nadie tiene un episodio activo. Cuando alguien se enferme, registralo para llevar el seguimiento.</div>';
+    } else {
+      actives.forEach(function(ep){
+        var mem = getMember(ep.memberId);
+        var temp = latestTemperature(ep.id);
+        html += '<div class="ep-card"><button class="ep-card-btn" data-action="goto" data-route="episode" data-id="' + ep.id + '">' +
+          '<span class="ep-icon">' + catIcon(ep.category) + '</span>' +
+          '<span class="ep-main"><span class="ep-title">' + esc(mem?mem.name:"") + ' · ' + esc(ep.title) + '</span>' +
+          '<span class="ep-sub">Día ' + episodeDay(ep) + (temp ? ' · Última temp. ' + temp.data.value + '°C' : '') + '</span></span>' +
+          '</button><span class="day-badge">Día ' + episodeDay(ep) + '</span></div>';
+      });
+    }
+    html += '</section>';
+
+    // Próximos controles
+    var upcomingControls = state.controls.filter(function(c){ return c.nextControlDate && c.nextControlDate>=date; })
+      .concat(state.controls.filter(function(c){ return c.date>=date; }))
+      .sort(function(a,b){ return (a.nextControlDate||a.date).localeCompare(b.nextControlDate||b.date); }).slice(0,6);
+    html += '<section class="block"><div class="block-title"><h2>Próximos controles</h2></div>';
+    if(upcomingControls.length===0){
+      html += '<div class="empty">No hay controles agendados.</div>';
+    } else {
+      html += '<div class="card"><div class="list-simple">';
+      upcomingControls.forEach(function(c){
+        var mem = getMember(c.memberId);
+        var d = c.nextControlDate && c.nextControlDate>=date ? c.nextControlDate : c.date;
+        html += '<div class="li-row"><span class="li-dot" style="background:' + (mem?mem.color:"#999") + '"></span>' +
+          '<div class="li-main"><div class="li-title">🩺 ' + esc(c.specialty||"Control") + '</div><div class="li-sub">' + esc(mem?mem.name:"") + '</div></div>' +
+          '<div class="li-date">' + fmtDateShort(d) + '</div></div>';
+      });
+      html += '</div></div>';
+    }
+    html += '</section>';
+
+    // stats strip
+    var totalTreat = state.treatments.filter(function(t){ return isTreatmentActive(t); }).length;
+    html += '<div class="stats-strip">' +
+      '<div><div class="s-num">' + state.members.length + '</div><div class="s-lbl">Integrantes</div></div>' +
+      '<div><div class="s-num">' + actives.length + '</div><div class="s-lbl">Episodios activos</div></div>' +
+      '<div><div class="s-num">' + totalTreat + '</div><div class="s-lbl">Tratamientos activos</div></div>' +
+      '</div>';
+
+    return html;
+  }
+
+  /* ---------------- Member page ---------------- */
+  function renderMemberPage(id){
+    var mem = getMember(id);
+    if(!mem){ ui.route={name:"inicio"}; return renderInicio(); }
+    var age = ageFromBirthdate(mem.birthdate);
+    var actEps = activeEpisodesForMember(mem.id);
+    var pastEps = pastEpisodesForMember(mem.id);
+    var chronic = chronicTreatmentsForMember(mem.id);
+    var controls = state.controls.filter(function(c){ return c.memberId===mem.id; }).sort(function(a,b){ return b.date.localeCompare(a.date); });
+
+    var html = '<div class="page-header"><div class="member-header">' +
+      '<span class="member-avatar" style="background:' + mem.color + '">' + esc(initials(mem.name)) + '</span>' +
+      '<div><h1>' + esc(mem.name) + '</h1><div class="sub">' + (mem.relation?esc(mem.relation)+" · ":"") + (age!=null?age+" años":"") + '</div></div>' +
+      '</div><div class="header-actions">' +
+      '<button class="icon-btn" data-action="open-member-form" data-id="' + mem.id + '" title="Editar">✎</button>' +
+      '<button class="icon-btn" data-action="confirm-delete-member" data-id="' + mem.id + '" title="Eliminar">✕</button>' +
+      '</div></div>';
+
+    // Estado actual
+    html += '<div class="chip-wrap" style="margin-bottom:28px;">';
+    if(actEps.length===0 && chronic.filter(function(t){return isTreatmentActive(t);}).length===0){
+      html += '<span class="chip">✅ Sin novedades</span>';
+    } else {
+      actEps.forEach(function(ep){ html += '<span class="chip selected">' + catIcon(ep.category) + ' ' + esc(ep.title) + ' · Día ' + episodeDay(ep) + '</span>'; });
+      chronic.filter(function(t){return isTreatmentActive(t);}).forEach(function(t){ html += '<span class="chip">💊 ' + esc(t.name) + '</span>'; });
+    }
+    html += '</div>';
+
+    // Episodios
+    html += '<section class="block"><div class="block-title"><h2>Episodios</h2><button class="btn small" data-action="open-episode-form" data-member="' + mem.id + '">+ Nuevo episodio</button></div>';
+    if(actEps.length===0 && pastEps.length===0){
+      html += '<div class="empty">Sin episodios registrados. Cuando ' + esc(mem.name) + ' se enferme, creá un episodio para seguir su evolución día a día.</div>';
+    } else {
+      actEps.forEach(function(ep){
+        var temp = latestTemperature(ep.id);
+        html += '<div class="ep-card"><button class="ep-card-btn" data-action="goto" data-route="episode" data-id="' + ep.id + '">' +
+          '<span class="ep-icon">' + catIcon(ep.category) + '</span>' +
+          '<span class="ep-main"><span class="ep-title">' + esc(ep.title) + ' <span class="badge active" style="margin-left:4px;">Activo</span></span>' +
+          '<span class="ep-sub">Desde ' + fmtDateShort(ep.startDate) + (temp?' · '+temp.data.value+'°C':'') + '</span></span>' +
+          '</button><span class="day-badge">Día ' + episodeDay(ep) + '</span></div>';
+      });
+      pastEps.forEach(function(ep){
+        html += '<div class="ep-card"><button class="ep-card-btn" data-action="goto" data-route="episode" data-id="' + ep.id + '">' +
+          '<span class="ep-icon" style="background:var(--teal-soft);">' + catIcon(ep.category) + '</span>' +
+          '<span class="ep-main"><span class="ep-title">' + esc(ep.title) + ' <span class="badge recovered" style="margin-left:4px;">Recuperado</span></span>' +
+          '<span class="ep-sub">' + fmtDateShort(ep.startDate) + ' – ' + fmtDateShort(ep.endDate) + ' · ' + (daysBetween(ep.startDate,ep.endDate)+1) + ' días</span></span>' +
+          '</button></div>';
+      });
+    }
+    html += '</section>';
+
+    // Tratamientos crónicos
+    html += '<section class="block"><div class="block-title"><h2>Tratamientos</h2><button class="btn small subtle" data-action="open-treatment-form" data-member="' + mem.id + '">+ Tratamiento</button></div>';
+    if(chronic.length===0){
+      html += '<div class="empty">Sin tratamientos permanentes registrados.</div>';
+    } else {
+      var todayDosesChronic = [];
+      chronic.forEach(function(t){ todayDosesChronic = todayDosesChronic.concat(todaysDosesForTreatment(t)); });
+      if(todayDosesChronic.length){
+        html += '<div class="pastillero"><div class="dose-group" style="min-width:100%">';
+        todayDosesChronic.sort(function(a,b){return a.time.localeCompare(b.time);}).forEach(function(d){ html += renderCapsule(d); });
+        html += '</div></div>';
+      }
+      html += '<div class="card">';
+      chronic.forEach(function(t){ html += renderTreatmentRow(t); });
+      html += '</div>';
+    }
+    html += '</section>';
+
+    // Controles médicos
+    html += '<section class="block"><div class="block-title"><h2>Controles médicos</h2><button class="btn small subtle" data-action="open-control-form" data-member="' + mem.id + '">+ Control</button></div>';
+    if(controls.length===0){
+      html += '<div class="empty">Sin controles registrados. Anotá chequeos de rutina como pediatra, dentista u oftalmólogo.</div>';
+    } else {
+      html += '<div class="card"><div class="list-simple">';
+      controls.forEach(function(c){
+        html += '<div class="li-row"><span class="li-dot" style="background:var(--sky);"></span>' +
+          '<div class="li-main"><div class="li-title">' + esc(c.specialty||"Control") + (c.professional?' · '+esc(c.professional):'') + '</div>' +
+          '<div class="li-sub">' + (c.place?esc(c.place):'') + (c.nextControlDate?' · Próximo: '+fmtDateShort(c.nextControlDate):'') + '</div></div>' +
+          '<div class="li-date">' + fmtDateShort(c.date) + '</div>' +
+          '<div class="t-actions"><button class="icon-btn" data-action="open-control-form" data-id="' + c.id + '" title="Editar">✎</button>' +
+          '<button class="icon-btn" data-action="confirm-delete-control" data-id="' + c.id + '" title="Eliminar">✕</button></div></div>';
+      });
+      html += '</div></div>';
+    }
+    html += '</section>';
+
+    // Historial completo
+    var histItems = [];
+    episodesForMember(mem.id).forEach(function(ep){
+      histItems.push({ date: ep.status==="recovered"?ep.endDate:ep.startDate, sort: (ep.status==="recovered"?ep.endDate:ep.startDate)+"9",
+        html: '<div class="li-row"><span class="li-dot" style="background:' + (ep.status==="recovered"?"var(--teal)":"var(--clay)") + ';"></span>' +
+          '<div class="li-main"><div class="li-title">' + catIcon(ep.category) + ' ' + esc(ep.title) + '</div><div class="li-sub">' +
+          (ep.status==="recovered" ? "Recuperado · "+(daysBetween(ep.startDate,ep.endDate)+1)+" días" : "Episodio activo · Día "+episodeDay(ep)) + '</div></div>' +
+          '<div class="li-date">' + fmtDateShort(ep.status==="recovered"?ep.endDate:ep.startDate) + '</div></div>' });
+      controls.forEach(function(){});
+    });
+    controls.forEach(function(c){
+      histItems.push({ date:c.date, sort:c.date+"5",
+        html: '<div class="li-row"><span class="li-dot" style="background:var(--sky);"></span>' +
+          '<div class="li-main"><div class="li-title">🩺 ' + esc(c.specialty||"Control") + '</div><div class="li-sub">Control médico</div></div>' +
+          '<div class="li-date">' + fmtDateShort(c.date) + '</div></div>' });
+    });
+    histItems.sort(function(a,b){ return b.sort.localeCompare(a.sort); });
+    html += '<section class="block"><div class="block-title"><h2>Historial completo</h2></div>';
+    if(histItems.length===0){
+      html += '<div class="empty">Todavía no hay historial para mostrar.</div>';
+    } else {
+      html += '<div class="card"><div class="list-simple">' + histItems.map(function(h){return h.html;}).join("") + '</div></div>';
+    }
+    html += '</section>';
+
+    return html;
+  }
+
+  function renderTreatmentRow(t){
+    var active = isTreatmentActive(t);
+    return '<div class="med-row" style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 4px;border-bottom:1px solid var(--line-soft);">' +
+      '<div><div style="font-weight:600;font-size:14px;">' + esc(t.name) + ' <span class="badge ' + (active?"active":"recovered") + '" style="background:' + (active?"var(--teal-soft)":"var(--paper-2)") + ';color:' + (active?"var(--teal)":"var(--ink-faint)") + ';">' + (active?"Activo":"Finalizado") + '</span></div>' +
+      '<div style="font-size:12.5px;color:var(--ink-soft);margin-top:2px;">' + esc(t.dose||"") + (t.frequency?" · "+esc(t.frequency):"") + '</div>' +
+      '<div style="display:flex;gap:5px;margin-top:5px;flex-wrap:wrap;">' + (t.times||[]).map(function(ti){ return '<span class="time-chip mono" style="font-size:11px;background:var(--paper-2);color:var(--ink-soft);padding:2px 7px;border-radius:5px;">'+esc(ti)+'</span>'; }).join("") + '</div>' +
+      (t.notes?'<div style="font-size:12.5px;color:var(--ink-soft);margin-top:4px;">'+esc(t.notes)+'</div>':'') +
+      '</div><div class="t-actions"><button class="icon-btn" data-action="open-treatment-form" data-id="' + t.id + '" title="Editar">✎</button>' +
+      '<button class="icon-btn" data-action="confirm-delete-treatment" data-id="' + t.id + '" title="Eliminar">✕</button></div></div>';
+  }
+
+  function renderCapsule(d){
+    return '<div class="capsule ' + (d.taken?"taken":"") + '"><button class="capsule-btn" data-action="toggle-dose" data-treatment="' + d.treatmentId + '" data-time="' + d.time + '">' +
+      '<span class="check">' + (d.taken?"✓":"") + '</span><span class="info"><span class="time mono">' + esc(d.time) + '</span><span class="name">' + esc(d.name) + '</span></span></button></div>';
+  }
+
+  /* ---------------- Episode page ---------------- */
+  function renderEpisodePage(id){
+    var ep = getEpisode(id);
+    if(!ep){ ui.route={name:"inicio"}; return renderInicio(); }
+    var mem = getMember(ep.memberId);
+    var recovered = ep.status==="recovered";
+
+    var html = '<div class="crumb"><button data-action="goto" data-route="member" data-id="' + mem.id + '">← ' + esc(mem.name) + '</button></div>';
+
+    html += '<div class="ep-header ' + (recovered?"recovered":"") + '"><span class="big-icon">' + catIcon(ep.category) + '</span>' +
+      '<div style="flex:1;"><h1>' + esc(ep.title) + '</h1><div class="meta-row">' +
+      '<span class="badge ' + (recovered?"recovered":"active") + '">' + (recovered?"Recuperado":"Activo") + '</span>' +
+      '<span class="day-badge">Día ' + episodeDay(ep) + '</span>' +
+      '<span style="font-size:12.5px;color:var(--ink-soft);">Inicio ' + fmtDate(ep.startDate) + ' · ' + esc(ep.startTime) + '</span>' +
+      '</div></div><div class="header-actions">' +
+      (recovered ? '<button class="btn small subtle" data-action="reopen-episode" data-id="' + ep.id + '">Reabrir</button>' : '<button class="btn small amber" data-action="open-episode-close" data-id="' + ep.id + '">✓ Marcar recuperado</button>') +
+      '<button class="icon-btn" data-action="confirm-delete-episode" data-id="' + ep.id + '" title="Eliminar">✕</button>' +
+      '</div></div>';
+
+    if(recovered){
+      var maxT = maxTemperature(ep.id);
+      var syms = distinctSymptomNames(ep.id);
+      var treats = treatmentsForEpisode(ep.id);
+      var consults = consultationsForEpisode(ep.id);
+      html += '<div class="summary-card"><h3>Resumen del episodio</h3><div class="summary-grid">' +
+        '<div><div class="lbl">Duración</div>' + (daysBetween(ep.startDate,ep.endDate)+1) + ' días (' + fmtDateShort(ep.startDate) + ' – ' + fmtDateShort(ep.endDate) + ')</div>' +
+        '<div><div class="lbl">Temperatura máxima</div>' + (maxT!=null && isFinite(maxT) ? maxT+"°C" : "Sin registrar") + '</div>' +
+        '<div><div class="lbl">Síntomas registrados</div>' + (syms.length?esc(syms.join(", ")):"Ninguno") + '</div>' +
+        '<div><div class="lbl">Tratamientos</div>' + (treats.length?esc(treats.map(function(t){return t.name;}).join(", ")):"Ninguno") + '</div>' +
+        '<div><div class="lbl">Consultas médicas</div>' + consults.length + '</div>' +
+        (ep.recoveryNote ? '<div><div class="lbl">Nota de cierre</div>'+esc(ep.recoveryNote)+'</div>' : '') +
+        '</div></div>';
+    } else {
+      var temp = latestTemperature(ep.id);
+      var syms2 = activeSymptoms(ep.id);
+      html += '<div class="status-row">' +
+        '<div class="status-box"><div class="lbl">Última temperatura</div>' +
+        (temp ? '<div class="temp-val">🌡️ ' + temp.data.value + '°C</div><div class="temp-when">' + fmtDateShort(temp.date) + ' · ' + esc(temp.time) + '</div>' : '<div style="color:var(--ink-faint);font-size:13px;">Sin registrar</div>') +
+        '</div>' +
+        '<div class="status-box" style="flex:1.4;"><div class="lbl">Síntomas activos</div>' +
+        (syms2.length ? syms2.map(function(s){ return '<span class="symptom-tag ' + (s.status==="Mejorando"?"improving":"") + '">' + esc(s.name) + (s.status==="Mejorando"?" · mejorando":"") + '</span>'; }).join("") : '<div style="color:var(--ink-faint);font-size:13px;">Ninguno activo</div>') +
+        '</div></div>';
+
+      // Próxima acción
+      var famDose = null;
+      var epTreatIds = treatmentsForEpisode(ep.id).map(function(t){return t.id;});
+      var epDoses = [];
+      treatmentsForEpisode(ep.id).forEach(function(t){ epDoses = epDoses.concat(todaysDosesForTreatment(t).map(function(d){return d;})); });
+      var pend = epDoses.filter(function(d){return !d.taken;});
+      var overdue = pend.filter(function(d){return d.diff<0;}).sort(function(a,b){return a.diff-b.diff;});
+      var upcoming = pend.filter(function(d){return d.diff>=0;}).sort(function(a,b){return a.diff-b.diff;});
+      famDose = overdue[0] || upcoming[0] || null;
+      html += '<section class="block"><div class="block-title"><h2>Próxima acción</h2></div>';
+      if(famDose){
+        html += '<div class="now-card ' + (famDose.diff<0?"overdue":"") + '"><div class="eyebrow">' + (famDose.diff<0?"Atrasada":"Próxima toma") + '</div>' +
+          '<div class="med-line">💊 ' + esc(famDose.name) + (famDose.dose?' · '+esc(famDose.dose):'') + '</div>' +
+          '<div class="time-line mono">' + esc(famDose.time) + ' · ' + diffLabel(famDose.diff) + '</div>' +
+          '<button class="btn" data-action="toggle-dose" data-treatment="' + famDose.treatmentId + '" data-time="' + famDose.time + '">Marcar tomado</button></div>';
+      } else if(epTreatIds.length){
+        html += '<div class="empty">Sin tomas pendientes por ahora.</div>';
+      } else {
+        html += '<div class="empty">Este episodio todavía no tiene tratamientos programados.</div>';
+      }
+      html += '</section>';
+    }
+
+    // Tratamientos del episodio
+    var eTreats = treatmentsForEpisode(ep.id);
+    html += '<section class="block"><div class="block-title"><h2>Tratamientos</h2>' + (recovered?'':'<button class="btn small subtle" data-action="open-treatment-form" data-member="' + ep.memberId + '" data-episode="' + ep.id + '">+ Tratamiento</button>') + '</div>';
+    if(eTreats.length===0){
+      html += '<div class="empty">Sin tratamientos asociados a este episodio.</div>';
+    } else {
+      html += '<div class="card">' + eTreats.map(renderTreatmentRow).join("") + '</div>';
+    }
+    html += '</section>';
+
+    // Registrar + Evolución
+    if(!recovered){
+      html += '<section class="block"><button class="btn block-w" data-action="open-action-chooser" data-episode="' + ep.id + '">+ Registrar</button></section>';
+    }
+
+    html += '<section class="block"><div class="block-title"><h2>Evolución</h2></div>';
+    html += renderEpisodeTimeline(ep);
+    html += '</section>';
+
+    return html;
+  }
+
+  function renderEpisodeTimeline(ep){
+    var items = [];
+    eventsForEpisode(ep.id).forEach(function(e){
+      items.push({ date:e.date, time:e.time, stamp:e.date+e.time+e.createdAt, type:e.type, id:e.id, data:e.data, deletable:true });
+    });
+    state.medicationLogs.filter(function(l){ return l.episodeId===ep.id; }).forEach(function(l){
+      items.push({ date:l.scheduledDate, time:l.actualTime||l.scheduledTime, stamp:l.scheduledDate+(l.actualTime||l.scheduledTime)+l.id, type:"medication", id:null, data:{name:getTreatment(l.treatmentId)?getTreatment(l.treatmentId).name:"Medicamento", dose:getTreatment(l.treatmentId)?getTreatment(l.treatmentId).dose:""}, deletable:false });
+    });
+    items.push({ date:ep.startDate, time:ep.startTime, stamp:ep.startDate+ep.startTime+"0", type:"start", id:null, data:{title:ep.title}, deletable:false });
+    if(ep.status==="recovered"){
+      items.push({ date:ep.endDate, time:"23:59", stamp:ep.endDate+"9999z", type:"recovered", id:null, data:{note:ep.recoveryNote}, deletable:false });
+    }
+    items.sort(function(a,b){ return b.stamp.localeCompare(a.stamp); });
+
+    if(items.length===0) return '<div class="empty">Sin eventos todavía.</div>';
+
+    var html = '<div class="timeline">';
+    items.forEach(function(it){
+      var title, notes = "";
+      if(it.type==="start"){ title = "Inicio del episodio"; }
+      else if(it.type==="recovered"){ title = "Marcado como recuperado"; notes = it.data.note||""; }
+      else if(it.type==="temperature"){ title = "Temperatura " + it.data.value + "°C"; }
+      else if(it.type==="symptom"){ title = esc(it.data.symptom) + " · " + esc(it.data.status); }
+      else if(it.type==="medication"){ title = esc(it.data.name) + (it.data.dose?" · "+esc(it.data.dose):""); }
+      else if(it.type==="note"){ title = "Nota"; notes = it.data.text||""; }
+      else if(it.type==="consultation"){ title = "Consulta médica" + (it.data.professional?" · "+esc(it.data.professional):""); notes = [it.data.specialty, it.data.place, it.data.indications].filter(Boolean).join(" · "); }
+      var icon = it.type==="start" ? "🤒" : it.type==="recovered" ? "✅" : (EVENT_ICON[it.type]||"•");
+      html += '<div class="t-item"><span class="ev-ic ' + it.type + '">' + icon + '</span><div class="t-card">' +
+        '<div class="t-top"><span class="t-date mono">' + fmtDateShort(it.date) + ' · ' + esc(it.time) + '</span>' +
+        (it.deletable ? '<div class="t-actions"><button class="icon-btn" data-action="confirm-delete-event" data-id="' + it.id + '" title="Eliminar">✕</button></div>' : '') +
+        '</div><div class="t-title">' + title + '</div>' + (notes?'<p class="t-notes">'+esc(notes)+'</p>':'') + '</div></div>';
+    });
+    html += '</div>';
+    return html;
+  }
+
+  /* ================= MODALS ================= */
+  function renderModal(){
+    if(!ui.modal) return "";
+    var m = ui.modal;
+    var inner;
+    if(m.type==="member") inner = renderMemberForm(m);
+    else if(m.type==="episode") inner = renderEpisodeForm(m);
+    else if(m.type==="treatment") inner = renderTreatmentForm(m);
+    else if(m.type==="control") inner = renderControlForm(m);
+    else if(m.type==="action-chooser") inner = renderActionChooser(m);
+    else if(m.type==="ev-temperature") inner = renderTempForm(m);
+    else if(m.type==="ev-symptom") inner = renderSymptomForm(m);
+    else if(m.type==="ev-note") inner = renderNoteForm(m);
+    else if(m.type==="ev-consultation") inner = renderConsultForm(m);
+    else if(m.type==="ev-medication") inner = renderMedEventForm(m);
+    else if(m.type==="episode-close") inner = renderCloseForm(m);
+    else if(m.type==="confirm") inner = renderConfirm(m);
+    else return "";
+    return '<div class="overlay">' + inner + '</div>';
+  }
+
+  function renderMemberForm(m){
+    var d = m.data || {};
+    var color = d.color || PALETTE[state.members.length % PALETTE.length];
+    return '<div class="modal" data-stop="1"><h3>' + (d.id?"Editar familiar":"Agregar familiar") + '</h3>' +
+      '<form data-form="member" data-id="' + (d.id||"") + '">' +
+      '<div class="field"><label>Nombre</label><input type="text" name="name" required value="' + esc(d.name||"") + '" placeholder="Ej. Sofía"></div>' +
+      '<div class="field-row"><div class="field"><label>Relación / apodo</label><input type="text" name="relation" value="' + esc(d.relation||"") + '" placeholder="Ej. Mamá, hijo, abuela"></div>' +
+      '<div class="field"><label>Fecha de nacimiento</label><input type="date" name="birthdate" value="' + esc(d.birthdate||"") + '"></div></div>' +
+      '<div class="field"><label>Color</label><div class="swatches">' +
+      PALETTE.map(function(c){ return '<button type="button" class="swatch ' + (c===color?"selected":"") + '" style="background:' + c + '" data-swatch="' + c + '"></button>'; }).join("") +
+      '</div><input type="hidden" name="color" value="' + color + '"></div>' +
+      '<div class="modal-actions"><button type="button" class="btn ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn">Guardar</button></div></form></div>';
+  }
+
+  function renderEpisodeForm(m){
+    var d = m.data || {};
+    var isEdit = !!d.id;
+    var draft = ui.symptomDraft || [];
+    var html = '<div class="modal" data-stop="1"><h3>' + (isEdit?"Editar episodio":"Nuevo episodio") + '</h3>';
+    if(!isEdit) html += '<div class="modal-sub">Registrá el inicio de una enfermedad o situación de salud.</div>';
+    html += '<form data-form="episode" data-id="' + (d.id||"") + '">';
+    if(!d.memberId || state.members.length>1){
+      html += '<div class="field"><label>Integrante</label><select name="memberId" required>' +
+        state.members.map(function(mm){ return '<option value="'+mm.id+'" '+(d.memberId===mm.id?"selected":"")+'>'+esc(mm.name)+'</option>'; }).join("") + '</select></div>';
+    } else {
+      html += '<input type="hidden" name="memberId" value="' + (d.memberId||(state.members[0]?state.members[0].id:"")) + '">';
+    }
+    html += '<div class="field"><label>Motivo</label><div class="chip-wrap" style="margin-bottom:8px;">' +
+      CATEGORY_SUGGESTIONS.map(function(c){ return '<button type="button" class="chip ' + (d.category===c?"selected":"") + '" data-catchip="' + esc(c) + '">' + catIcon(c) + ' ' + c + '</button>'; }).join("") +
+      '</div><input type="text" name="title" required value="' + esc(d.title||"") + '" placeholder="Ej. Resfrío"><input type="hidden" name="category" value="' + esc(d.category||"Otro") + '"></div>';
+    html += '<div class="field-row"><div class="field"><label>Fecha</label><input type="date" name="startDate" required value="' + esc(d.startDate||todayISO()) + '"></div>' +
+      '<div class="field"><label>Hora</label><input type="time" name="startTime" required value="' + esc(d.startTime||nowHM()) + '"></div></div>';
+    if(!isEdit){
+      html += '<div class="field"><label>Síntomas iniciales</label><div class="chip-wrap" id="symptom-chip-wrap">' +
+        SYMPTOM_SUGGESTIONS.map(function(s){ return '<button type="button" class="chip ' + (draft.indexOf(s)>-1?"selected":"") + '" data-symchip="' + esc(s) + '">' + esc(s) + '</button>'; }).join("") + '</div>' +
+        '<div class="field-row" style="margin-top:8px;"><input type="text" id="custom-symptom-input" placeholder="Otro síntoma..." style="flex:1;"><button type="button" class="btn small subtle" data-action="add-custom-symptom">Agregar</button></div>' +
+        '<input type="hidden" name="symptoms" value="' + esc(draft.join("|")) + '"></div>';
+      html += '<div class="field"><label>Temperatura inicial (opcional)</label><input type="number" step="0.1" name="temperature" value="' + esc(d.temperature||"") + '" placeholder="Ej. 38.2"></div>';
+      html += '<div class="field"><label>Nota inicial (opcional)</label><textarea name="notes" placeholder="Qué notaste, cómo empezó...">' + esc(d.notes||"") + '</textarea></div>';
+    }
+    html += '<div class="modal-actions"><button type="button" class="btn ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn">Guardar</button></div></form></div>';
+    return html;
+  }
+
+  function renderTreatmentForm(m){
+    var d = m.data || {};
+    var epOptions = state.episodes.filter(function(e){ return e.memberId===d.memberId; })
+      .sort(function(a,b){ return (b.startDate+b.startTime).localeCompare(a.startDate+a.startTime); });
+    return '<div class="modal" data-stop="1"><h3>' + (d.id?"Editar tratamiento":"Nuevo tratamiento") + '</h3>' +
+      '<form data-form="treatment" data-id="' + (d.id||"") + '" data-member="' + (d.memberId||"") + '">' +
+      '<div class="field"><label>Nombre del medicamento</label><input type="text" name="name" required value="' + esc(d.name||"") + '" placeholder="Ej. Paracetamol"></div>' +
+      '<div class="field-row"><div class="field"><label>Dosis</label><input type="text" name="dose" value="' + esc(d.dose||"") + '" placeholder="Ej. 500 mg"></div>' +
+      '<div class="field"><label>Frecuencia</label><select name="frequency">' + FREQUENCY_OPTIONS.map(function(f){ return '<option '+(d.frequency===f?"selected":"")+'>'+f+'</option>'; }).join("") + '</select></div></div>' +
+      '<div class="field"><label>Asociar a un episodio (opcional)</label><select name="episodeId">' +
+      '<option value="">Sin episodio · tratamiento permanente</option>' +
+      epOptions.map(function(e){ return '<option value="'+e.id+'" '+(d.episodeId===e.id?"selected":"")+'>'+catIcon(e.category)+' '+esc(e.title)+(e.status==="recovered"?" (recuperado)":" · activo")+'</option>'; }).join("") +
+      '</select><div class="hint">Podés dejarlo sin episodio y asociarlo más adelante editándolo.</div></div>' +
+      '<div class="field"><label>Horarios de toma</label><input type="text" name="times" value="' + esc((d.times||[]).join(", ")) + '" placeholder="Ej. 08:00, 14:00, 20:30"><div class="hint">Separá los horarios con comas. Dejalo vacío si es "según necesidad".</div></div>' +
+      '<div class="field-row"><div class="field"><label>Fecha de inicio</label><input type="date" name="startDate" value="' + esc(d.startDate||todayISO()) + '"></div>' +
+      '<div class="field"><label>Fecha de fin (opcional)</label><input type="date" name="endDate" value="' + esc(d.endDate||"") + '"></div></div>' +
+      '<div class="field"><label>Notas (opcional)</label><textarea name="notes" placeholder="Indicaciones, motivo, etc.">' + esc(d.notes||"") + '</textarea></div>' +
+      '<div class="modal-actions"><button type="button" class="btn ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn">Guardar</button></div></form></div>';
+  }
+
+  function renderControlForm(m){
+    var d = m.data || {};
+    return '<div class="modal" data-stop="1"><h3>' + (d.id?"Editar control":"Nuevo control médico") + '</h3>' +
+      '<form data-form="control" data-id="' + (d.id||"") + '" data-member="' + (d.memberId||"") + '">' +
+      '<div class="field-row"><div class="field"><label>Fecha</label><input type="date" name="date" required value="' + esc(d.date||todayISO()) + '"></div>' +
+      '<div class="field"><label>Hora</label><input type="time" name="time" value="' + esc(d.time||nowHM()) + '"></div></div>' +
+      '<div class="field"><label>Especialidad</label><input type="text" name="specialty" value="' + esc(d.specialty||"") + '" placeholder="Ej. Pediatra, Dentista"></div>' +
+      '<div class="field-row"><div class="field"><label>Profesional</label><input type="text" name="professional" value="' + esc(d.professional||"") + '"></div>' +
+      '<div class="field"><label>Lugar</label><input type="text" name="place" value="' + esc(d.place||"") + '"></div></div>' +
+      '<div class="field"><label>Próximo control (opcional)</label><input type="date" name="nextControlDate" value="' + esc(d.nextControlDate||"") + '"></div>' +
+      '<div class="field"><label>Notas</label><textarea name="notes">' + esc(d.notes||"") + '</textarea></div>' +
+      '<div class="modal-actions"><button type="button" class="btn ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn">Guardar</button></div></form></div>';
+  }
+
+  function renderActionChooser(m){
+    var epId = m.data.episodeId;
+    var tiles = [
+      {type:"ev-temperature", em:"🌡️", label:"Medición"},
+      {type:"ev-medication", em:"💊", label:"Medicamento"},
+      {type:"ev-symptom", em:"🤒", label:"Síntoma"},
+      {type:"ev-consultation", em:"🩺", label:"Consulta"},
+      {type:"ev-note", em:"📝", label:"Nota"}
+    ];
+    return '<div class="modal" data-stop="1"><h3>Registrar</h3><div class="modal-sub">Elegí qué querés anotar en este episodio.</div>' +
+      '<div class="action-chooser-grid">' + tiles.map(function(t){ return '<button type="button" class="action-chooser-tile" data-action="open-event-form" data-type="' + t.type + '" data-episode="' + epId + '"><span class="em">' + t.em + '</span>' + t.label + '</button>'; }).join("") + '</div>' +
+      '<div class="modal-actions"><button type="button" class="btn ghost" data-action="close-modal">Cerrar</button></div></div>';
+  }
+
+  function renderTempForm(m){
+    var d = m.data;
+    return '<div class="modal" data-stop="1"><h3>🌡️ Registrar temperatura</h3><form data-form="ev-temperature" data-episode="' + d.episodeId + '">' +
+      '<div class="field"><label>Temperatura (°C)</label><input type="number" step="0.1" name="value" required placeholder="Ej. 38.2" autofocus></div>' +
+      '<div class="field-row"><div class="field"><label>Fecha</label><input type="date" name="date" value="' + todayISO() + '"></div><div class="field"><label>Hora</label><input type="time" name="time" value="' + nowHM() + '"></div></div>' +
+      '<div class="modal-actions"><button type="button" class="btn ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn">Guardar</button></div></form></div>';
+  }
+
+  function renderSymptomForm(m){
+    var d = m.data;
+    var active = activeSymptoms(d.episodeId);
+    return '<div class="modal" data-stop="1"><h3>🤒 Registrar síntoma</h3>' +
+      (active.length ? '<div class="modal-sub">Tocá uno activo para actualizarlo, o escribí uno nuevo.</div><div class="chip-wrap" style="margin-bottom:14px;">' + active.map(function(s){ return '<button type="button" class="chip" data-fillsymptom="' + esc(s.name) + '">' + esc(s.name) + '</button>'; }).join("") + '</div>' : '') +
+      '<form data-form="ev-symptom" data-episode="' + d.episodeId + '">' +
+      '<div class="field"><label>Síntoma</label><input type="text" name="symptom" required id="symptom-name-input" placeholder="Ej. Dolor de garganta" list="symptom-suggestions">' +
+      '<datalist id="symptom-suggestions">' + SYMPTOM_SUGGESTIONS.map(function(s){return '<option value="'+esc(s)+'">';}).join("") + '</datalist></div>' +
+      '<div class="field"><label>Estado</label><select name="status"><option>Activo</option><option>Mejorando</option><option>Resuelto</option></select></div>' +
+      '<div class="field-row"><div class="field"><label>Fecha</label><input type="date" name="date" value="' + todayISO() + '"></div><div class="field"><label>Hora</label><input type="time" name="time" value="' + nowHM() + '"></div></div>' +
+      '<div class="modal-actions"><button type="button" class="btn ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn">Guardar</button></div></form></div>';
+  }
+
+  function renderNoteForm(m){
+    var d = m.data;
+    return '<div class="modal" data-stop="1"><h3>📝 Agregar nota</h3><form data-form="ev-note" data-episode="' + d.episodeId + '">' +
+      '<div class="field"><label>Nota</label><textarea name="text" required autofocus placeholder="Qué querés recordar..."></textarea></div>' +
+      '<div class="field-row"><div class="field"><label>Fecha</label><input type="date" name="date" value="' + todayISO() + '"></div><div class="field"><label>Hora</label><input type="time" name="time" value="' + nowHM() + '"></div></div>' +
+      '<div class="modal-actions"><button type="button" class="btn ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn">Guardar</button></div></form></div>';
+  }
+
+  function renderConsultForm(m){
+    var d = m.data;
+    return '<div class="modal" data-stop="1"><h3>🩺 Registrar consulta médica</h3><form data-form="ev-consultation" data-episode="' + d.episodeId + '" data-member="' + d.memberId + '">' +
+      '<div class="field-row"><div class="field"><label>Profesional</label><input type="text" name="professional" placeholder="Ej. Dra. Pérez"></div>' +
+      '<div class="field"><label>Especialidad</label><input type="text" name="specialty" placeholder="Ej. Pediatría"></div></div>' +
+      '<div class="field"><label>Lugar</label><input type="text" name="place"></div>' +
+      '<div class="field"><label>Indicaciones / notas</label><textarea name="indications" placeholder="Qué indicó el médico..."></textarea></div>' +
+      '<div class="field-row"><div class="field"><label>Fecha</label><input type="date" name="date" value="' + todayISO() + '"></div><div class="field"><label>Hora</label><input type="time" name="time" value="' + nowHM() + '"></div></div>' +
+      '<label class="checkbox-row"><input type="checkbox" name="createTreatment"> Crear un tratamiento a partir de esta consulta</label>' +
+      '<div class="modal-actions"><button type="button" class="btn ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn">Guardar</button></div></form></div>';
+  }
+
+  function renderMedEventForm(m){
+    var d = m.data;
+    var choice = m.choice || "toma";
+    return '<div class="modal" data-stop="1"><h3>💊 Registrar medicamento</h3><form data-form="ev-medication" data-episode="' + d.episodeId + '" data-member="' + d.memberId + '">' +
+      '<div class="field"><label>Nombre</label><input type="text" name="name" required placeholder="Ej. Paracetamol"></div>' +
+      '<div class="field-row"><div class="field"><label>Dosis</label><input type="text" name="dose" placeholder="Ej. 500 mg"></div>' +
+      '<div class="field"><label>Hora</label><input type="time" name="time" value="' + nowHM() + '"></div></div>' +
+      '<div class="field"><label>¿Qué querés hacer?</label><div class="radio-toggle">' +
+      '<button type="button" class="radio-opt ' + (choice==="toma"?"selected":"") + '" data-medchoice="toma"><span class="rdot"></span>Solo registrar esta toma</button>' +
+      '<button type="button" class="radio-opt ' + (choice==="tratamiento"?"selected":"") + '" data-medchoice="tratamiento"><span class="rdot"></span>Crear un tratamiento a partir de este medicamento</button>' +
+      '</div><input type="hidden" name="choice" value="' + choice + '"></div>' +
+      '<div class="modal-actions"><button type="button" class="btn ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn">Continuar</button></div></form></div>';
+  }
+
+  function renderCloseForm(m){
+    var d = m.data;
+    return '<div class="modal" data-stop="1"><h3>✓ Marcar como recuperado</h3><form data-form="episode-close" data-id="' + d.episodeId + '">' +
+      '<div class="field"><label>Fecha de recuperación</label><input type="date" name="endDate" value="' + todayISO() + '" required></div>' +
+      '<div class="field"><label>Nota (opcional)</label><textarea name="note" placeholder="Cómo terminó, algo para recordar..."></textarea></div>' +
+      '<div class="modal-actions"><button type="button" class="btn ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn">Confirmar</button></div></form></div>';
+  }
+
+  function renderConfirm(m){
+    return '<div class="modal" data-stop="1"><h3>Confirmar eliminación</h3><p class="confirm-msg">' + esc(m.data.message) + '</p>' +
+      '<div class="modal-actions"><button class="btn ghost" data-action="close-modal">Cancelar</button><button class="btn danger" data-action="do-confirm">Eliminar</button></div></div>';
+  }
+
+  /* ================= EVENTS ================= */
+  function attachEvents(){
+    var app = document.getElementById("app");
+
+    app.onclick = function(e){
+      if(busy) return;
+      var overlayEl = e.target.closest(".overlay");
+      if(overlayEl && e.target===overlayEl){ ui.modal=null; ui.symptomDraft=[]; render(); return; }
+
+      var btn = e.target.closest("[data-action],[data-swatch],[data-catchip],[data-symchip],[data-fillsymptom],[data-medchoice]");
+      if(!btn) return;
+      var action = btn.getAttribute("data-action");
+
+      if(action==="goto"){
+        var route = btn.getAttribute("data-route");
+        var rid = btn.getAttribute("data-id");
+        ui.route = rid ? {name:route, id:rid} : {name:route};
+        render();
+      }
+      else if(action==="close-modal"){ ui.modal=null; ui.symptomDraft=[]; render(); }
+      else if(action==="overlay-close"){ ui.modal=null; ui.symptomDraft=[]; render(); }
+      else if(action==="toggle-dose"){ toggleDose(btn.getAttribute("data-treatment"), btn.getAttribute("data-time")); }
+
+      else if(action==="open-member-form"){
+        var mid = btn.getAttribute("data-id");
+        ui.modal = { type:"member", data: mid ? Object.assign({}, getMember(mid)) : {} };
+        render();
+      }
+      else if(action==="confirm-delete-member"){
+        var dm = getMember(btn.getAttribute("data-id"));
+        ui.modal = { type:"confirm", data:{ message:"Se eliminará a "+dm.name+" junto con todos sus episodios, tratamientos y controles. Esta acción no se puede deshacer.", run:function(){ deleteMember(dm.id); } } };
+        render();
+      }
+
+      else if(action==="open-episode-form"){
+        ui.symptomDraft = [];
+        var eid = btn.getAttribute("data-id");
+        var emember = btn.getAttribute("data-member") || (ui.route.name==="member" ? ui.route.id : "");
+        var edata = eid ? Object.assign({}, state.episodes.find(function(x){return x.id===eid;})) : { memberId: emember };
+        ui.modal = { type:"episode", data: edata };
+        render();
+      }
+      else if(action==="open-episode-close"){
+        ui.modal = { type:"episode-close", data:{ episodeId: btn.getAttribute("data-id") } };
+        render();
+      }
+      else if(action==="reopen-episode"){ reopenEpisode(btn.getAttribute("data-id")); render(); }
+      else if(action==="confirm-delete-episode"){
+        var epd = getEpisode(btn.getAttribute("data-id"));
+        ui.modal = { type:"confirm", data:{ message:"Se eliminará el episodio \u201c"+epd.title+"\u201d con todo su historial y tratamientos asociados.", run:function(){ deleteEpisode(epd.id); } } };
+        render();
+      }
+
+      else if(action==="open-action-chooser"){
+        ui.modal = { type:"action-chooser", data:{ episodeId: btn.getAttribute("data-episode") } };
+        render();
+      }
+      else if(action==="open-event-form"){
+        var etype = btn.getAttribute("data-type");
+        var eepisode = btn.getAttribute("data-episode");
+        var ep2 = getEpisode(eepisode);
+        ui.modal = { type: etype, data:{ episodeId: eepisode, memberId: ep2?ep2.memberId:null } };
+        render();
+      }
+      else if(action==="confirm-delete-event"){
+        var evid = btn.getAttribute("data-id");
+        ui.modal = { type:"confirm", data:{ message:"Se eliminará este registro del historial.", run:function(){ deleteEpisodeEvent(evid); } } };
+        render();
+      }
+
+      else if(action==="open-treatment-form"){
+        var tid = btn.getAttribute("data-id");
+        var tdata;
+        if(tid){ tdata = Object.assign({}, getTreatment(tid)); }
+        else { tdata = { memberId: btn.getAttribute("data-member")||"", episodeId: btn.getAttribute("data-episode")||"" }; }
+        ui.modal = { type:"treatment", data: tdata };
+        render();
+      }
+      else if(action==="confirm-delete-treatment"){
+        var trid = btn.getAttribute("data-id");
+        ui.modal = { type:"confirm", data:{ message:"Se eliminará este tratamiento y su registro de tomas.", run:function(){ deleteTreatment(trid); } } };
+        render();
+      }
+
+      else if(action==="open-control-form"){
+        var cid = btn.getAttribute("data-id");
+        var cdata = cid ? Object.assign({}, state.controls.find(function(x){return x.id===cid;})) : { memberId: btn.getAttribute("data-member")||"" };
+        ui.modal = { type:"control", data: cdata };
+        render();
+      }
+      else if(action==="confirm-delete-control"){
+        var ccid = btn.getAttribute("data-id");
+        ui.modal = { type:"confirm", data:{ message:"Se eliminará este control médico.", run:function(){ deleteControl(ccid); } } };
+        render();
+      }
+
+      else if(action==="do-confirm"){ var fn = ui.modal.data.run; ui.modal=null; fn(); render(); }
+
+      // in-modal micro interactions
+      if(btn.hasAttribute("data-swatch")){
+        var form = btn.closest("form");
+        form.querySelector('input[name="color"]').value = btn.getAttribute("data-swatch");
+        form.querySelectorAll(".swatch").forEach(function(s){ s.classList.remove("selected"); });
+        btn.classList.add("selected");
+      }
+      if(btn.hasAttribute("data-catchip")){
+        var f2 = btn.closest("form");
+        var cat = btn.getAttribute("data-catchip");
+        f2.querySelector('input[name="category"]').value = cat;
+        f2.querySelector('input[name="title"]').value = cat;
+        f2.querySelectorAll("[data-catchip]").forEach(function(c){ c.classList.remove("selected"); });
+        btn.classList.add("selected");
+      }
+      if(btn.hasAttribute("data-symchip")){
+        var s = btn.getAttribute("data-symchip");
+        var idx = ui.symptomDraft.indexOf(s);
+        if(idx>-1) ui.symptomDraft.splice(idx,1); else ui.symptomDraft.push(s);
+        render();
+      }
+      if(action==="add-custom-symptom"){
+        var input = document.getElementById("custom-symptom-input");
+        var val = input.value.trim();
+        if(val && ui.symptomDraft.indexOf(val)===-1){ ui.symptomDraft.push(val); }
+        render();
+      }
+      if(btn.hasAttribute("data-fillsymptom")){
+        var nameInput = document.getElementById("symptom-name-input");
+        if(nameInput) nameInput.value = btn.getAttribute("data-fillsymptom");
+      }
+      if(btn.hasAttribute("data-medchoice")){
+        var f3 = btn.closest("form");
+        f3.querySelector('input[name="choice"]').value = btn.getAttribute("data-medchoice");
+        f3.querySelectorAll(".radio-opt").forEach(function(o){ o.classList.remove("selected"); });
+        btn.classList.add("selected");
+      }
+    };
+
+    app.onsubmit = function(e){
+      e.preventDefault();
+      if(busy) return;
+      var form = e.target;
+      var kind = form.getAttribute("data-form");
+      var fd = new FormData(form);
+
+      if(kind==="member"){
+        upsertMember({ id: form.getAttribute("data-id")||undefined, name:(fd.get("name")||"").trim(), relation:(fd.get("relation")||"").trim(), birthdate: fd.get("birthdate")||"", color: fd.get("color") });
+        ui.modal=null; render();
+      }
+      else if(kind==="episode"){
+        var eid = form.getAttribute("data-id");
+        if(eid){
+          updateEpisodeMeta(eid, { title:(fd.get("title")||"").trim(), category: fd.get("category")||"Otro", startDate: fd.get("startDate"), startTime: fd.get("startTime") });
+        } else {
+          createEpisode({ memberId: fd.get("memberId"), title:(fd.get("title")||"").trim(), category: fd.get("category")||"Otro", startDate: fd.get("startDate"), startTime: fd.get("startTime"), symptoms: ui.symptomDraft.slice(), temperature: fd.get("temperature"), notes:(fd.get("notes")||"").trim() });
+        }
+        ui.symptomDraft=[]; ui.modal=null; render();
+      }
+      else if(kind==="treatment"){
+        upsertTreatment({ id: form.getAttribute("data-id")||undefined, memberId: form.getAttribute("data-member")||fd.get("memberId"), episodeId: fd.get("episodeId")||null,
+          name:(fd.get("name")||"").trim(), dose:(fd.get("dose")||"").trim(), frequency: fd.get("frequency"), times: parseTimes(fd.get("times")), startDate: fd.get("startDate")||"", endDate: fd.get("endDate")||"", notes:(fd.get("notes")||"").trim() });
+        ui.modal=null; render();
+      }
+      else if(kind==="control"){
+        upsertControl({ id: form.getAttribute("data-id")||undefined, memberId: form.getAttribute("data-member")||fd.get("memberId"), date: fd.get("date"), time: fd.get("time")||"", specialty:(fd.get("specialty")||"").trim(), professional:(fd.get("professional")||"").trim(), place:(fd.get("place")||"").trim(), nextControlDate: fd.get("nextControlDate")||"", notes:(fd.get("notes")||"").trim() });
+        ui.modal=null; render();
+      }
+      else if(kind==="ev-temperature"){
+        var epId = form.getAttribute("data-episode"); var epx = getEpisode(epId);
+        addEpisodeEvent(epId, epx.memberId, "temperature", fd.get("date")||todayISO(), fd.get("time")||nowHM(), { value: parseFloat(fd.get("value")) });
+        ui.modal=null; render();
+      }
+      else if(kind==="ev-symptom"){
+        var epId2 = form.getAttribute("data-episode"); var epx2 = getEpisode(epId2);
+        addEpisodeEvent(epId2, epx2.memberId, "symptom", fd.get("date")||todayISO(), fd.get("time")||nowHM(), { symptom:(fd.get("symptom")||"").trim(), status: fd.get("status")||"Activo" });
+        ui.modal=null; render();
+      }
+      else if(kind==="ev-note"){
+        var epId3 = form.getAttribute("data-episode"); var epx3 = getEpisode(epId3);
+        addEpisodeEvent(epId3, epx3.memberId, "note", fd.get("date")||todayISO(), fd.get("time")||nowHM(), { text:(fd.get("text")||"").trim() });
+        ui.modal=null; render();
+      }
+      else if(kind==="ev-consultation"){
+        var epId4 = form.getAttribute("data-episode"); var memId4 = form.getAttribute("data-member");
+        addEpisodeEvent(epId4, memId4, "consultation", fd.get("date")||todayISO(), fd.get("time")||nowHM(), { professional:(fd.get("professional")||"").trim(), specialty:(fd.get("specialty")||"").trim(), place:(fd.get("place")||"").trim(), indications:(fd.get("indications")||"").trim() });
+        if(fd.get("createTreatment")){
+          ui.modal = { type:"treatment", data:{ memberId: memId4, episodeId: epId4 } };
+        } else { ui.modal=null; }
+        render();
+      }
+      else if(kind==="ev-medication"){
+        var epId5 = form.getAttribute("data-episode"); var memId5 = form.getAttribute("data-member");
+        var choice = fd.get("choice")||"toma";
+        var name = (fd.get("name")||"").trim(); var dose = (fd.get("dose")||"").trim(); var time = fd.get("time")||nowHM();
+        if(choice==="toma"){
+          addEpisodeEvent(epId5, memId5, "medication", todayISO(), time, { name:name, dose:dose });
+          ui.modal=null;
+        } else {
+          ui.modal = { type:"treatment", data:{ memberId: memId5, episodeId: epId5, name:name, dose:dose } };
+        }
+        render();
+      }
+      else if(kind==="episode-close"){
+        closeEpisode(form.getAttribute("data-id"), fd.get("endDate")||todayISO(), (fd.get("note")||"").trim());
+        ui.modal=null; render();
+      }
+    };
+  }
+
+  /* ---------------- boot ---------------- */
+  function boot(){
+    render();
+    loadState().then(function(){
+      if(normalizeTreatmentTimes()) saveState();
+      render();
+    });
+  }
+  boot();
+})();
+</script>
+<script>
+  if("serviceWorker" in navigator){
+    window.addEventListener("load", function(){
+      navigator.serviceWorker.register("service-worker.js").catch(function(){});
+    });
+  }
+</script>
+</body>
+</html>
