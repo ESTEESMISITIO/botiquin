@@ -509,6 +509,12 @@
     saveState();
   }
   function deleteEpisodeEvent(id){ state.episodeEvents = state.episodeEvents.filter(function(e){ return e.id!==id; }); saveState(); }
+  function updateEpisodeEvent(id, date, time, data){
+    var ev = state.episodeEvents.find(function(e){ return e.id===id; });
+    if(!ev) return;
+    ev.date = date; ev.time = time; ev.data = data;
+    saveState();
+  }
 
   /* ---------------- mutations: treatments / controls ---------------- */
   function upsertTreatment(data){
@@ -936,7 +942,7 @@
       var icon = it.type==="start" ? "🤒" : it.type==="recovered" ? "✅" : (EVENT_ICON[it.type]||"•");
       html += '<div class="t-item"><span class="ev-ic ' + it.type + '">' + icon + '</span><div class="t-card">' +
         '<div class="t-top"><span class="t-date mono">' + fmtDateShort(it.date) + ' · ' + esc(it.time) + '</span>' +
-        (it.deletable ? '<div class="t-actions"><button class="icon-btn" data-action="confirm-delete-event" data-id="' + it.id + '" title="Eliminar">✕</button></div>' : '') +
+        (it.deletable ? '<div class="t-actions"><button class="icon-btn" data-action="open-event-form" data-type="ev-' + it.type + '" data-episode="' + ep.id + '" data-event="' + it.id + '" title="Editar">✎</button><button class="icon-btn" data-action="confirm-delete-event" data-id="' + it.id + '" title="Eliminar">✕</button></div>' : '') +
         '</div><div class="t-title">' + title + '</div>' + (notes?'<p class="t-notes">'+esc(notes)+'</p>':'') + '</div></div>';
     });
     html += '</div>';
@@ -1024,9 +1030,10 @@
       epOptions.map(function(e){ return '<option value="'+e.id+'" '+(d.episodeId===e.id?"selected":"")+'>'+catIcon(e.category)+' '+esc(e.title)+(e.status==="recovered"?" (recuperado)":" · activo")+'</option>'; }).join("") +
       '</select><div class="hint">Podés dejarlo sin episodio y asociarlo más adelante editándolo.</div></div>' +
       '<div class="field"><label>Horarios de toma</label><input type="text" name="times" value="' + esc((d.times||[]).join(", ")) + '" placeholder="Ej. 08:00, 14:00, 20:30"><div class="hint">Separá los horarios con comas. Dejalo vacío si es "según necesidad".</div></div>' +
-      '<div class="field-row"><div class="field"><label>Fecha de inicio</label><input type="date" name="startDate" value="' + esc(d.startDate||todayISO()) + '"></div>' +
+      '<div class="field-row"><div class="field"><label>Fecha de inicio</label><input type="date" name="startDate" id="tf-start-date" value="' + esc(d.startDate||todayISO()) + '" oninput="window.__botiquinCalcEnd()"></div>' +
       '<div class="field"><label>Hora de inicio</label><input type="time" name="startTime" value="' + esc(d.startTime||nowHM()) + '"></div></div>' +
-      '<div class="field"><label>Fecha de fin (opcional)</label><input type="date" name="endDate" value="' + esc(d.endDate||"") + '"></div>' +
+      '<div class="field-row"><div class="field"><label>Duración (días, opcional)</label><input type="number" min="1" id="tf-duration" placeholder="Ej. 7" oninput="window.__botiquinCalcEnd()"><div class="hint">Calcula la fecha de fin sola.</div></div>' +
+      '<div class="field"><label>Fecha de fin (opcional)</label><input type="date" name="endDate" id="tf-end-date" value="' + esc(d.endDate||"") + '"></div></div>' +
       '<div class="field"><label>Notas (opcional)</label><textarea name="notes" placeholder="Indicaciones, motivo, etc.">' + esc(d.notes||"") + '</textarea></div>' +
       '<div class="modal-actions"><button type="button" class="btn ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn">Guardar</button></div></form></div>';
   }
@@ -1061,42 +1068,46 @@
 
   function renderTempForm(m){
     var d = m.data;
-    return '<div class="modal" data-stop="1"><h3>🌡️ Registrar temperatura</h3><form data-form="ev-temperature" data-episode="' + d.episodeId + '">' +
-      '<div class="field"><label>Temperatura (°C)</label><input type="number" step="0.1" name="value" required placeholder="Ej. 38.2" autofocus></div>' +
-      '<div class="field-row"><div class="field"><label>Fecha</label><input type="date" name="date" value="' + todayISO() + '"></div><div class="field"><label>Hora</label><input type="time" name="time" value="' + nowHM() + '"></div></div>' +
+    var isEdit = !!d.id;
+    return '<div class="modal" data-stop="1"><h3>🌡️ ' + (isEdit?"Editar temperatura":"Registrar temperatura") + '</h3><form data-form="ev-temperature" data-id="' + (d.id||"") + '" data-episode="' + d.episodeId + '">' +
+      '<div class="field"><label>Temperatura (°C)</label><input type="number" step="0.1" name="value" required value="' + (d.value!=null?esc(d.value):"") + '" placeholder="Ej. 38.2" autofocus></div>' +
+      '<div class="field-row"><div class="field"><label>Fecha</label><input type="date" name="date" value="' + esc(d.date||todayISO()) + '"></div><div class="field"><label>Hora</label><input type="time" name="time" value="' + esc(d.time||nowHM()) + '"></div></div>' +
       '<div class="modal-actions"><button type="button" class="btn ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn">Guardar</button></div></form></div>';
   }
 
   function renderSymptomForm(m){
     var d = m.data;
-    var active = activeSymptoms(d.episodeId);
-    return '<div class="modal" data-stop="1"><h3>🤒 Registrar síntoma</h3>' +
+    var isEdit = !!d.id;
+    var active = isEdit ? [] : activeSymptoms(d.episodeId);
+    return '<div class="modal" data-stop="1"><h3>🤒 ' + (isEdit?"Editar síntoma":"Registrar síntoma") + '</h3>' +
       (active.length ? '<div class="modal-sub">Tocá uno activo para actualizarlo, o escribí uno nuevo.</div><div class="chip-wrap" style="margin-bottom:14px;">' + active.map(function(s){ return '<button type="button" class="chip" data-fillsymptom="' + esc(s.name) + '">' + esc(s.name) + '</button>'; }).join("") + '</div>' : '') +
-      '<form data-form="ev-symptom" data-episode="' + d.episodeId + '">' +
-      '<div class="field"><label>Síntoma</label><input type="text" name="symptom" required id="symptom-name-input" placeholder="Ej. Dolor de garganta" list="symptom-suggestions">' +
+      '<form data-form="ev-symptom" data-id="' + (d.id||"") + '" data-episode="' + d.episodeId + '">' +
+      '<div class="field"><label>Síntoma</label><input type="text" name="symptom" required id="symptom-name-input" value="' + esc(d.symptom||"") + '" placeholder="Ej. Dolor de garganta" list="symptom-suggestions">' +
       '<datalist id="symptom-suggestions">' + SYMPTOM_SUGGESTIONS.map(function(s){return '<option value="'+esc(s)+'">';}).join("") + '</datalist></div>' +
-      '<div class="field"><label>Estado</label><select name="status"><option>Activo</option><option>Mejorando</option><option>Resuelto</option></select></div>' +
-      '<div class="field-row"><div class="field"><label>Fecha</label><input type="date" name="date" value="' + todayISO() + '"></div><div class="field"><label>Hora</label><input type="time" name="time" value="' + nowHM() + '"></div></div>' +
+      '<div class="field"><label>Estado</label><select name="status"><option ' + ((!d.status||d.status==="Activo")?"selected":"") + '>Activo</option><option ' + (d.status==="Mejorando"?"selected":"") + '>Mejorando</option><option ' + (d.status==="Resuelto"?"selected":"") + '>Resuelto</option></select></div>' +
+      '<div class="field-row"><div class="field"><label>Fecha</label><input type="date" name="date" value="' + esc(d.date||todayISO()) + '"></div><div class="field"><label>Hora</label><input type="time" name="time" value="' + esc(d.time||nowHM()) + '"></div></div>' +
       '<div class="modal-actions"><button type="button" class="btn ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn">Guardar</button></div></form></div>';
   }
 
   function renderNoteForm(m){
     var d = m.data;
-    return '<div class="modal" data-stop="1"><h3>📝 Agregar nota</h3><form data-form="ev-note" data-episode="' + d.episodeId + '">' +
-      '<div class="field"><label>Nota</label><textarea name="text" required autofocus placeholder="Qué querés recordar..."></textarea></div>' +
-      '<div class="field-row"><div class="field"><label>Fecha</label><input type="date" name="date" value="' + todayISO() + '"></div><div class="field"><label>Hora</label><input type="time" name="time" value="' + nowHM() + '"></div></div>' +
+    var isEdit = !!d.id;
+    return '<div class="modal" data-stop="1"><h3>📝 ' + (isEdit?"Editar nota":"Agregar nota") + '</h3><form data-form="ev-note" data-id="' + (d.id||"") + '" data-episode="' + d.episodeId + '">' +
+      '<div class="field"><label>Nota</label><textarea name="text" required autofocus placeholder="Qué querés recordar...">' + esc(d.text||"") + '</textarea></div>' +
+      '<div class="field-row"><div class="field"><label>Fecha</label><input type="date" name="date" value="' + esc(d.date||todayISO()) + '"></div><div class="field"><label>Hora</label><input type="time" name="time" value="' + esc(d.time||nowHM()) + '"></div></div>' +
       '<div class="modal-actions"><button type="button" class="btn ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn">Guardar</button></div></form></div>';
   }
 
   function renderConsultForm(m){
     var d = m.data;
-    return '<div class="modal" data-stop="1"><h3>🩺 Registrar consulta médica</h3><form data-form="ev-consultation" data-episode="' + d.episodeId + '" data-member="' + d.memberId + '">' +
-      '<div class="field-row"><div class="field"><label>Profesional</label><input type="text" name="professional" placeholder="Ej. Dra. Pérez"></div>' +
-      '<div class="field"><label>Especialidad</label><input type="text" name="specialty" placeholder="Ej. Pediatría"></div></div>' +
-      '<div class="field"><label>Lugar</label><input type="text" name="place"></div>' +
-      '<div class="field"><label>Indicaciones / notas</label><textarea name="indications" placeholder="Qué indicó el médico..."></textarea></div>' +
-      '<div class="field-row"><div class="field"><label>Fecha</label><input type="date" name="date" value="' + todayISO() + '"></div><div class="field"><label>Hora</label><input type="time" name="time" value="' + nowHM() + '"></div></div>' +
-      '<label class="checkbox-row"><input type="checkbox" name="createTreatment"> Crear un tratamiento a partir de esta consulta</label>' +
+    var isEdit = !!d.id;
+    return '<div class="modal" data-stop="1"><h3>🩺 ' + (isEdit?"Editar consulta médica":"Registrar consulta médica") + '</h3><form data-form="ev-consultation" data-id="' + (d.id||"") + '" data-episode="' + d.episodeId + '" data-member="' + d.memberId + '">' +
+      '<div class="field-row"><div class="field"><label>Profesional</label><input type="text" name="professional" value="' + esc(d.professional||"") + '" placeholder="Ej. Dra. Pérez"></div>' +
+      '<div class="field"><label>Especialidad</label><input type="text" name="specialty" value="' + esc(d.specialty||"") + '" placeholder="Ej. Pediatría"></div></div>' +
+      '<div class="field"><label>Lugar</label><input type="text" name="place" value="' + esc(d.place||"") + '"></div>' +
+      '<div class="field"><label>Indicaciones / notas</label><textarea name="indications" placeholder="Qué indicó el médico...">' + esc(d.indications||"") + '</textarea></div>' +
+      '<div class="field-row"><div class="field"><label>Fecha</label><input type="date" name="date" value="' + esc(d.date||todayISO()) + '"></div><div class="field"><label>Hora</label><input type="time" name="time" value="' + esc(d.time||nowHM()) + '"></div></div>' +
+      (isEdit ? '' : '<label class="checkbox-row"><input type="checkbox" name="createTreatment"> Crear un tratamiento a partir de esta consulta</label>') +
       '<div class="modal-actions"><button type="button" class="btn ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn">Guardar</button></div></form></div>';
   }
 
@@ -1187,8 +1198,14 @@
       else if(action==="open-event-form"){
         var etype = btn.getAttribute("data-type");
         var eepisode = btn.getAttribute("data-episode");
+        var eventId = btn.getAttribute("data-event");
         var ep2 = getEpisode(eepisode);
-        ui.modal = { type: etype, data:{ episodeId: eepisode, memberId: ep2?ep2.memberId:null } };
+        var modalData = { episodeId: eepisode, memberId: ep2?ep2.memberId:null };
+        if(eventId){
+          var evSrc = state.episodeEvents.find(function(x){ return x.id===eventId; });
+          if(evSrc){ modalData.id = evSrc.id; modalData.date = evSrc.date; modalData.time = evSrc.time; Object.assign(modalData, evSrc.data); }
+        }
+        ui.modal = { type: etype, data: modalData };
         render();
       }
       else if(action==="confirm-delete-event"){
@@ -1317,26 +1334,38 @@
         ui.modal=null; render();
       }
       else if(kind==="ev-temperature"){
-        var epId = form.getAttribute("data-episode"); var epx = getEpisode(epId);
-        addEpisodeEvent(epId, epx.memberId, "temperature", fd.get("date")||todayISO(), fd.get("time")||nowHM(), { value: parseFloat(fd.get("value")) });
+        var epId = form.getAttribute("data-episode"); var epx = getEpisode(epId); var evId1 = form.getAttribute("data-id");
+        var data1 = { value: parseFloat(fd.get("value")) };
+        if(evId1) updateEpisodeEvent(evId1, fd.get("date")||todayISO(), fd.get("time")||nowHM(), data1);
+        else addEpisodeEvent(epId, epx.memberId, "temperature", fd.get("date")||todayISO(), fd.get("time")||nowHM(), data1);
         ui.modal=null; render();
       }
       else if(kind==="ev-symptom"){
-        var epId2 = form.getAttribute("data-episode"); var epx2 = getEpisode(epId2);
-        addEpisodeEvent(epId2, epx2.memberId, "symptom", fd.get("date")||todayISO(), fd.get("time")||nowHM(), { symptom:(fd.get("symptom")||"").trim(), status: fd.get("status")||"Activo" });
+        var epId2 = form.getAttribute("data-episode"); var epx2 = getEpisode(epId2); var evId2 = form.getAttribute("data-id");
+        var data2 = { symptom:(fd.get("symptom")||"").trim(), status: fd.get("status")||"Activo" };
+        if(evId2) updateEpisodeEvent(evId2, fd.get("date")||todayISO(), fd.get("time")||nowHM(), data2);
+        else addEpisodeEvent(epId2, epx2.memberId, "symptom", fd.get("date")||todayISO(), fd.get("time")||nowHM(), data2);
         ui.modal=null; render();
       }
       else if(kind==="ev-note"){
-        var epId3 = form.getAttribute("data-episode"); var epx3 = getEpisode(epId3);
-        addEpisodeEvent(epId3, epx3.memberId, "note", fd.get("date")||todayISO(), fd.get("time")||nowHM(), { text:(fd.get("text")||"").trim() });
+        var epId3 = form.getAttribute("data-episode"); var epx3 = getEpisode(epId3); var evId3 = form.getAttribute("data-id");
+        var data3 = { text:(fd.get("text")||"").trim() };
+        if(evId3) updateEpisodeEvent(evId3, fd.get("date")||todayISO(), fd.get("time")||nowHM(), data3);
+        else addEpisodeEvent(epId3, epx3.memberId, "note", fd.get("date")||todayISO(), fd.get("time")||nowHM(), data3);
         ui.modal=null; render();
       }
       else if(kind==="ev-consultation"){
-        var epId4 = form.getAttribute("data-episode"); var memId4 = form.getAttribute("data-member");
-        addEpisodeEvent(epId4, memId4, "consultation", fd.get("date")||todayISO(), fd.get("time")||nowHM(), { professional:(fd.get("professional")||"").trim(), specialty:(fd.get("specialty")||"").trim(), place:(fd.get("place")||"").trim(), indications:(fd.get("indications")||"").trim() });
-        if(fd.get("createTreatment")){
-          ui.modal = { type:"treatment", data:{ memberId: memId4, episodeId: epId4 } };
-        } else { ui.modal=null; }
+        var epId4 = form.getAttribute("data-episode"); var memId4 = form.getAttribute("data-member"); var evId4 = form.getAttribute("data-id");
+        var data4 = { professional:(fd.get("professional")||"").trim(), specialty:(fd.get("specialty")||"").trim(), place:(fd.get("place")||"").trim(), indications:(fd.get("indications")||"").trim() };
+        if(evId4){
+          updateEpisodeEvent(evId4, fd.get("date")||todayISO(), fd.get("time")||nowHM(), data4);
+          ui.modal=null;
+        } else {
+          addEpisodeEvent(epId4, memId4, "consultation", fd.get("date")||todayISO(), fd.get("time")||nowHM(), data4);
+          if(fd.get("createTreatment")){
+            ui.modal = { type:"treatment", data:{ memberId: memId4, episodeId: epId4 } };
+          } else { ui.modal=null; }
+        }
         render();
       }
       else if(kind==="ev-medication"){
@@ -1366,6 +1395,18 @@
       render();
     });
   }
+  window.__botiquinCalcEnd = function(){
+    var startEl = document.getElementById("tf-start-date");
+    var durEl = document.getElementById("tf-duration");
+    var endEl = document.getElementById("tf-end-date");
+    if(!startEl || !durEl || !endEl) return;
+    var days = parseInt(durEl.value, 10);
+    if(!days || days<=0 || !startEl.value) return;
+    var d = new Date(startEl.value+"T00:00:00");
+    d.setDate(d.getDate() + (days-1));
+    endEl.value = d.toISOString().slice(0,10);
+  };
+
   boot();
 })();
 </script>
