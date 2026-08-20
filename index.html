@@ -2,8 +2,17 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Botiquín · Salud familiar</title>
+<meta name="description" content="Registro de salud familiar: episodios, tratamientos y controles médicos.">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#2F6B63">
+<link rel="icon" href="icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Botiquín">
+<meta name="mobile-web-app-capable" content="yes">
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
 
@@ -100,6 +109,13 @@
   .capsule .name{font-size:12.5px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:120px;}
   .capsule.taken .name{text-decoration:line-through; color:var(--ink-soft);}
   .capsule-btn{all:unset; cursor:pointer; display:flex; align-items:center; gap:9px; width:100%;}
+
+  .dose-square{all:unset; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:4px; width:46px;}
+  .dose-square .box{width:26px;height:26px;border-radius:8px; border:1.6px solid var(--line); background:#fff; display:flex; align-items:center; justify-content:center; font-size:13px; color:#fff; transition:transform .1s ease, background .15s ease;}
+  .dose-square:hover .box{transform:translateY(-1px); border-color:var(--teal);}
+  .dose-square.taken .box{background:var(--teal); border-color:var(--teal);}
+  .dose-square .lbl{font-family:'IBM Plex Mono',monospace; font-size:10px; color:var(--ink-soft); text-align:center;}
+  .dose-square.taken .lbl{color:var(--teal); font-weight:600;}
 
   /* ---------- TIMELINE (evolución) ---------- */
   .timeline{position:relative; padding-left:30px;}
@@ -280,7 +296,12 @@
 
   /* ---------------- storage ---------------- */
   function storageAvailable(){
-    return typeof window !== "undefined" && !!window.storage && typeof window.storage.get === "function" && typeof window.storage.set === "function";
+    try{
+      var t = "__botiquin_test__";
+      window.localStorage.setItem(t, "1");
+      window.localStorage.removeItem(t);
+      return true;
+    } catch(e){ return false; }
   }
   var STORAGE_OK = storageAvailable();
 
@@ -303,19 +324,19 @@
   function loadState(){
     if(!STORAGE_OK) return Promise.resolve();
     try{
-      return window.storage.get(STORAGE_KEY, false).then(function(res){
-        if(res && res.value){ try{ var p = JSON.parse(res.value); Object.assign(state, p); }catch(e){} }
-      }).catch(function(){});
-    } catch(e){ return Promise.resolve(); }
+      var raw = window.localStorage.getItem(STORAGE_KEY);
+      if(raw){ try{ var p = JSON.parse(raw); Object.assign(state, p); }catch(e){} }
+    } catch(e){}
+    return Promise.resolve();
   }
   function saveState(){
     if(!STORAGE_OK) return Promise.resolve();
     setBusy(true);
     try{
-      return window.storage.set(STORAGE_KEY, JSON.stringify(state), false)
-        .then(function(){ setBusy(false); })
-        .catch(function(e){ console.error("No se pudo guardar", e); setBusy(false); });
-    } catch(e){ console.error("No se pudo guardar", e); setBusy(false); return Promise.resolve(); }
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      setBusy(false);
+    } catch(e){ console.error("No se pudo guardar", e); setBusy(false); }
+    return Promise.resolve();
   }
 
   /* ---------------- helpers ---------------- */
@@ -525,7 +546,7 @@
     });
     html += '<button class="rail-add" data-action="open-member-form"><span>+</span> Agregar familiar</button>';
     html += '<div class="rail-spacer"></div>';
-    html += '<div class="rail-foot' + (STORAGE_OK?'':' warn') + '">' + (STORAGE_OK ? 'Tus datos se guardan automáticamente en este dispositivo.' : '⚠️ No se detectó guardado automático en esta vista: lo que cargues se va a perder al recargar la página.') + '</div>';
+    html += '<div class="rail-foot' + (STORAGE_OK?'':' warn') + '">' + (STORAGE_OK ? 'Tus datos se guardan en este navegador/dispositivo.' : '⚠️ Este navegador bloqueó el guardado local: los datos se van a perder al cerrar la página.') + '</div>';
     html += '</div>';
     return html;
   }
@@ -683,13 +704,6 @@
     if(chronic.length===0){
       html += '<div class="empty">Sin tratamientos permanentes registrados.</div>';
     } else {
-      var todayDosesChronic = [];
-      chronic.forEach(function(t){ todayDosesChronic = todayDosesChronic.concat(todaysDosesForTreatment(t)); });
-      if(todayDosesChronic.length){
-        html += '<div class="pastillero"><div class="dose-group" style="min-width:100%">';
-        todayDosesChronic.sort(function(a,b){return a.time.localeCompare(b.time);}).forEach(function(d){ html += renderCapsule(d); });
-        html += '</div></div>';
-      }
       html += '<div class="card">';
       chronic.forEach(function(t){ html += renderTreatmentRow(t); });
       html += '</div>';
@@ -742,13 +756,25 @@
     return html;
   }
 
+  function renderDoseSquares(t){
+    if(!(t.times||[]).length) return '<span class="hint" style="margin:6px 0 0;">Según necesidad · sin horario fijo</span>';
+    if(!isTreatmentActive(t)){
+      return '<div style="display:flex;gap:5px;margin-top:6px;flex-wrap:wrap;">' + t.times.map(function(ti){ return '<span class="time-chip mono" style="font-size:11px;background:var(--paper-2);color:var(--ink-soft);padding:2px 7px;border-radius:5px;">'+esc(ti)+'</span>'; }).join("") + '</div>';
+    }
+    var date = todayISO();
+    return '<div style="display:flex;gap:7px;margin-top:7px;flex-wrap:wrap;">' + t.times.map(function(ti){
+      var taken = !!getDoseLog(t.id, date, ti);
+      return '<button type="button" class="dose-square ' + (taken?"taken":"") + '" data-action="toggle-dose" data-treatment="' + t.id + '" data-time="' + ti + '">' +
+        '<span class="box">' + (taken?"✓":"") + '</span><span class="lbl">' + esc(ti) + '</span></button>';
+    }).join("") + '</div>';
+  }
   function renderTreatmentRow(t){
     var active = isTreatmentActive(t);
-    return '<div class="med-row" style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 4px;border-bottom:1px solid var(--line-soft);">' +
-      '<div><div style="font-weight:600;font-size:14px;">' + esc(t.name) + ' <span class="badge ' + (active?"active":"recovered") + '" style="background:' + (active?"var(--teal-soft)":"var(--paper-2)") + ';color:' + (active?"var(--teal)":"var(--ink-faint)") + ';">' + (active?"Activo":"Finalizado") + '</span></div>' +
+    return '<div class="med-row" style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:12px 4px;border-bottom:1px solid var(--line-soft);">' +
+      '<div style="flex:1;min-width:0;"><div style="font-weight:600;font-size:14px;">' + esc(t.name) + ' <span class="badge ' + (active?"active":"recovered") + '" style="background:' + (active?"var(--teal-soft)":"var(--paper-2)") + ';color:' + (active?"var(--teal)":"var(--ink-faint)") + ';">' + (active?"Activo":"Finalizado") + '</span></div>' +
       '<div style="font-size:12.5px;color:var(--ink-soft);margin-top:2px;">' + esc(t.dose||"") + (t.frequency?" · "+esc(t.frequency):"") + '</div>' +
-      '<div style="display:flex;gap:5px;margin-top:5px;flex-wrap:wrap;">' + (t.times||[]).map(function(ti){ return '<span class="time-chip mono" style="font-size:11px;background:var(--paper-2);color:var(--ink-soft);padding:2px 7px;border-radius:5px;">'+esc(ti)+'</span>'; }).join("") + '</div>' +
-      (t.notes?'<div style="font-size:12.5px;color:var(--ink-soft);margin-top:4px;">'+esc(t.notes)+'</div>':'') +
+      renderDoseSquares(t) +
+      (t.notes?'<div style="font-size:12.5px;color:var(--ink-soft);margin-top:6px;">'+esc(t.notes)+'</div>':'') +
       '</div><div class="t-actions"><button class="icon-btn" data-action="open-treatment-form" data-id="' + t.id + '" title="Editar">✎</button>' +
       '<button class="icon-btn" data-action="confirm-delete-treatment" data-id="' + t.id + '" title="Eliminar">✕</button></div></div>';
   }
@@ -1306,6 +1332,13 @@
   }
   boot();
 })();
+</script>
+<script>
+  if("serviceWorker" in navigator){
+    window.addEventListener("load", function(){
+      navigator.serviceWorker.register("service-worker.js").catch(function(){});
+    });
+  }
 </script>
 </body>
 </html>
