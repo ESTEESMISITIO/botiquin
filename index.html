@@ -2,17 +2,8 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Botiquín · Salud familiar</title>
-<meta name="description" content="Registro de salud familiar: episodios, tratamientos y controles médicos.">
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#2F6B63">
-<link rel="icon" href="icon-192.png" type="image/png">
-<link rel="apple-touch-icon" href="icon-192.png">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Botiquín">
-<meta name="mobile-web-app-capable" content="yes">
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
 
@@ -289,12 +280,7 @@
 
   /* ---------------- storage ---------------- */
   function storageAvailable(){
-    try{
-      var t = "__botiquin_test__";
-      window.localStorage.setItem(t, "1");
-      window.localStorage.removeItem(t);
-      return true;
-    } catch(e){ return false; }
+    return typeof window !== "undefined" && !!window.storage && typeof window.storage.get === "function" && typeof window.storage.set === "function";
   }
   var STORAGE_OK = storageAvailable();
 
@@ -317,19 +303,19 @@
   function loadState(){
     if(!STORAGE_OK) return Promise.resolve();
     try{
-      var raw = window.localStorage.getItem(STORAGE_KEY);
-      if(raw){ try{ var p = JSON.parse(raw); Object.assign(state, p); }catch(e){} }
-    } catch(e){}
-    return Promise.resolve();
+      return window.storage.get(STORAGE_KEY, false).then(function(res){
+        if(res && res.value){ try{ var p = JSON.parse(res.value); Object.assign(state, p); }catch(e){} }
+      }).catch(function(){});
+    } catch(e){ return Promise.resolve(); }
   }
   function saveState(){
     if(!STORAGE_OK) return Promise.resolve();
     setBusy(true);
     try{
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-      setBusy(false);
-    } catch(e){ console.error("No se pudo guardar", e); setBusy(false); }
-    return Promise.resolve();
+      return window.storage.set(STORAGE_KEY, JSON.stringify(state), false)
+        .then(function(){ setBusy(false); })
+        .catch(function(e){ console.error("No se pudo guardar", e); setBusy(false); });
+    } catch(e){ console.error("No se pudo guardar", e); setBusy(false); return Promise.resolve(); }
   }
 
   /* ---------------- helpers ---------------- */
@@ -539,7 +525,7 @@
     });
     html += '<button class="rail-add" data-action="open-member-form"><span>+</span> Agregar familiar</button>';
     html += '<div class="rail-spacer"></div>';
-    html += '<div class="rail-foot' + (STORAGE_OK?'':' warn') + '">' + (STORAGE_OK ? 'Tus datos se guardan en este navegador/dispositivo.' : '⚠️ Este navegador bloqueó el guardado local: los datos se van a perder al cerrar la página.') + '</div>';
+    html += '<div class="rail-foot' + (STORAGE_OK?'':' warn') + '">' + (STORAGE_OK ? 'Tus datos se guardan automáticamente en este dispositivo.' : '⚠️ No se detectó guardado automático en esta vista: lo que cargues se va a perder al recargar la página.') + '</div>';
     html += '</div>';
     return html;
   }
@@ -951,7 +937,9 @@
       '<div class="field"><label>Hora</label><input type="time" name="startTime" required value="' + esc(d.startTime||nowHM()) + '"></div></div>';
     if(!isEdit){
       html += '<div class="field"><label>Síntomas iniciales</label><div class="chip-wrap" id="symptom-chip-wrap">' +
-        SYMPTOM_SUGGESTIONS.map(function(s){ return '<button type="button" class="chip ' + (draft.indexOf(s)>-1?"selected":"") + '" data-symchip="' + esc(s) + '">' + esc(s) + '</button>'; }).join("") + '</div>' +
+        SYMPTOM_SUGGESTIONS.map(function(s){ return '<button type="button" class="chip ' + (draft.indexOf(s)>-1?"selected":"") + '" data-symchip="' + esc(s) + '">' + esc(s) + '</button>'; }).join("") +
+        draft.filter(function(s){ return SYMPTOM_SUGGESTIONS.indexOf(s)===-1; }).map(function(s){ return '<button type="button" class="chip selected" data-symchip="' + esc(s) + '">' + esc(s) + ' ✕</button>'; }).join("") +
+        '</div>' +
         '<div class="field-row" style="margin-top:8px;"><input type="text" id="custom-symptom-input" placeholder="Otro síntoma..." style="flex:1;"><button type="button" class="btn small subtle" data-action="add-custom-symptom">Agregar</button></div>' +
         '<input type="hidden" name="symptoms" value="' + esc(draft.join("|")) + '"></div>';
       html += '<div class="field"><label>Temperatura inicial (opcional)</label><input type="number" step="0.1" name="temperature" value="' + esc(d.temperature||"") + '" placeholder="Ej. 38.2"></div>';
@@ -1193,14 +1181,37 @@
       if(btn.hasAttribute("data-symchip")){
         var s = btn.getAttribute("data-symchip");
         var idx = ui.symptomDraft.indexOf(s);
-        if(idx>-1) ui.symptomDraft.splice(idx,1); else ui.symptomDraft.push(s);
-        render();
+        var isCustom = SYMPTOM_SUGGESTIONS.indexOf(s)===-1;
+        if(idx>-1){
+          ui.symptomDraft.splice(idx,1);
+          if(isCustom){ btn.remove(); } else { btn.classList.remove("selected"); }
+        } else {
+          ui.symptomDraft.push(s);
+          btn.classList.add("selected");
+        }
+        var symForm = btn.closest("form");
+        var symHidden = symForm ? symForm.querySelector('input[name="symptoms"]') : null;
+        if(symHidden) symHidden.value = ui.symptomDraft.join("|");
       }
       if(action==="add-custom-symptom"){
         var input = document.getElementById("custom-symptom-input");
         var val = input.value.trim();
-        if(val && ui.symptomDraft.indexOf(val)===-1){ ui.symptomDraft.push(val); }
-        render();
+        if(val && ui.symptomDraft.indexOf(val)===-1){
+          ui.symptomDraft.push(val);
+          var wrap = document.getElementById("symptom-chip-wrap");
+          if(wrap){
+            var chip = document.createElement("button");
+            chip.type = "button";
+            chip.className = "chip selected";
+            chip.setAttribute("data-symchip", val);
+            chip.textContent = val + " ✕";
+            wrap.appendChild(chip);
+          }
+          var addForm = input.closest("form");
+          var addHidden = addForm ? addForm.querySelector('input[name="symptoms"]') : null;
+          if(addHidden) addHidden.value = ui.symptomDraft.join("|");
+        }
+        input.value = "";
       }
       if(btn.hasAttribute("data-fillsymptom")){
         var nameInput = document.getElementById("symptom-name-input");
@@ -1295,13 +1306,6 @@
   }
   boot();
 })();
-</script>
-<script>
-  if("serviceWorker" in navigator){
-    window.addEventListener("load", function(){
-      navigator.serviceWorker.register("service-worker.js").catch(function(){});
-    });
-  }
 </script>
 </body>
 </html>
