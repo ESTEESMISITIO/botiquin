@@ -1,4 +1,4 @@
-var CACHE_NAME = "botiquin-cache-v3";
+var CACHE_NAME = "botiquin-cache-v5";
 var ASSETS = [
   "./",
   "./index.html",

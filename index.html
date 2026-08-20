@@ -116,6 +116,9 @@
   .dose-square.taken .box{background:var(--teal); border-color:var(--teal);}
   .dose-square .lbl{font-family:'IBM Plex Mono',monospace; font-size:10px; color:var(--ink-soft); text-align:center;}
   .dose-square.taken .lbl{color:var(--teal); font-weight:600;}
+  .dose-grid{display:flex; flex-direction:column; gap:8px; margin-top:8px;}
+  .dose-day-row{display:flex; align-items:center; gap:10px;}
+  .dose-day-label{width:46px; flex-shrink:0; font-size:11px; color:var(--ink-faint);}
 
   /* ---------- TIMELINE (evolución) ---------- */
   .timeline{position:relative; padding-left:30px;}
@@ -387,8 +390,8 @@
   function activeTreatmentsForMember(id){ return state.treatments.filter(function(t){ return t.memberId===id && isTreatmentActive(t); }); }
 
   function getDoseLog(treatmentId, date, time){ return state.medicationLogs.find(function(l){ return l.treatmentId===treatmentId && l.scheduledDate===date && l.scheduledTime===time; }); }
-  function toggleDose(treatmentId, time){
-    var date = todayISO();
+  function toggleDose(treatmentId, date, time){
+    date = date || todayISO();
     var existing = getDoseLog(treatmentId, date, time);
     if(existing){ state.medicationLogs = state.medicationLogs.filter(function(l){ return l.id!==existing.id; }); }
     else {
@@ -397,10 +400,15 @@
     }
     saveState(); render();
   }
+  function doseTimesForDay(t, day){
+    var times = t.times||[];
+    if(day===t.startDate && t.startTime){ times = times.filter(function(ti){ return ti >= t.startTime; }); }
+    return times;
+  }
   function todaysDosesForTreatment(t){
     if(!isTreatmentActive(t)) return [];
     var date = todayISO();
-    return (t.times||[]).map(function(time){
+    return doseTimesForDay(t, date).map(function(time){
       var log = getDoseLog(t.id, date, time);
       return { treatmentId:t.id, time:time, name:t.name, dose:t.dose, taken:!!log, diff: timeToMinutes(time)-timeToMinutes(nowHM()) };
     }).sort(function(a,b){ return a.time.localeCompare(b.time); });
@@ -756,17 +764,44 @@
     return html;
   }
 
+  function dayLabel(iso){
+    if(iso===todayISO()) return "Hoy";
+    return fmtDateShort(iso);
+  }
+  function treatmentDayRange(t){
+    var todayS = todayISO();
+    var start = t.startDate || todayS;
+    var end = t.endDate || todayS;
+    if(end > todayS) end = todayS;
+    if(start > end) return [];
+    var days = []; var cur = new Date(start+"T00:00:00"); var endD = new Date(end+"T00:00:00"); var guard = 0;
+    while(cur <= endD && guard < 400){ days.push(cur.toISOString().slice(0,10)); cur.setDate(cur.getDate()+1); guard++; }
+    var CAP = 14;
+    var total = days.length;
+    if(days.length > CAP) days = days.slice(days.length-CAP);
+    return { days: days, total: total };
+  }
   function renderDoseSquares(t){
     if(!(t.times||[]).length) return '<span class="hint" style="margin:6px 0 0;">Según necesidad · sin horario fijo</span>';
-    if(!isTreatmentActive(t)){
-      return '<div style="display:flex;gap:5px;margin-top:6px;flex-wrap:wrap;">' + t.times.map(function(ti){ return '<span class="time-chip mono" style="font-size:11px;background:var(--paper-2);color:var(--ink-soft);padding:2px 7px;border-radius:5px;">'+esc(ti)+'</span>'; }).join("") + '</div>';
+    var range = treatmentDayRange(t);
+    if(range.days.length===0) return '<span class="hint" style="margin:6px 0 0;">Todavía no empezó</span>';
+    var html = '<div class="dose-grid">';
+    if(range.total > range.days.length){
+      html += '<div class="hint" style="margin:0 0 3px;">Mostrando los últimos ' + range.days.length + ' días de ' + range.total + '</div>';
     }
-    var date = todayISO();
-    return '<div style="display:flex;gap:7px;margin-top:7px;flex-wrap:wrap;">' + t.times.map(function(ti){
-      var taken = !!getDoseLog(t.id, date, ti);
-      return '<button type="button" class="dose-square ' + (taken?"taken":"") + '" data-action="toggle-dose" data-treatment="' + t.id + '" data-time="' + ti + '">' +
-        '<span class="box">' + (taken?"✓":"") + '</span><span class="lbl">' + esc(ti) + '</span></button>';
-    }).join("") + '</div>';
+    range.days.forEach(function(day){
+      var dayTimes = doseTimesForDay(t, day);
+      if(dayTimes.length===0) return;
+      html += '<div class="dose-day-row"><span class="dose-day-label mono">' + esc(dayLabel(day)) + '</span><div style="display:flex;gap:7px;flex-wrap:wrap;">';
+      dayTimes.forEach(function(ti){
+        var taken = !!getDoseLog(t.id, day, ti);
+        html += '<button type="button" class="dose-square ' + (taken?"taken":"") + '" data-action="toggle-dose" data-treatment="' + t.id + '" data-date="' + day + '" data-time="' + ti + '">' +
+          '<span class="box">' + (taken?"✓":"") + '</span><span class="lbl">' + esc(ti) + '</span></button>';
+      });
+      html += '</div></div>';
+    });
+    html += '</div>';
+    return html;
   }
   function renderTreatmentRow(t){
     var active = isTreatmentActive(t);
@@ -990,7 +1025,8 @@
       '</select><div class="hint">Podés dejarlo sin episodio y asociarlo más adelante editándolo.</div></div>' +
       '<div class="field"><label>Horarios de toma</label><input type="text" name="times" value="' + esc((d.times||[]).join(", ")) + '" placeholder="Ej. 08:00, 14:00, 20:30"><div class="hint">Separá los horarios con comas. Dejalo vacío si es "según necesidad".</div></div>' +
       '<div class="field-row"><div class="field"><label>Fecha de inicio</label><input type="date" name="startDate" value="' + esc(d.startDate||todayISO()) + '"></div>' +
-      '<div class="field"><label>Fecha de fin (opcional)</label><input type="date" name="endDate" value="' + esc(d.endDate||"") + '"></div></div>' +
+      '<div class="field"><label>Hora de inicio</label><input type="time" name="startTime" value="' + esc(d.startTime||nowHM()) + '"></div></div>' +
+      '<div class="field"><label>Fecha de fin (opcional)</label><input type="date" name="endDate" value="' + esc(d.endDate||"") + '"></div>' +
       '<div class="field"><label>Notas (opcional)</label><textarea name="notes" placeholder="Indicaciones, motivo, etc.">' + esc(d.notes||"") + '</textarea></div>' +
       '<div class="modal-actions"><button type="button" class="btn ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn">Guardar</button></div></form></div>';
   }
@@ -1112,7 +1148,7 @@
       }
       else if(action==="close-modal"){ ui.modal=null; ui.symptomDraft=[]; render(); }
       else if(action==="overlay-close"){ ui.modal=null; ui.symptomDraft=[]; render(); }
-      else if(action==="toggle-dose"){ toggleDose(btn.getAttribute("data-treatment"), btn.getAttribute("data-time")); }
+      else if(action==="toggle-dose"){ toggleDose(btn.getAttribute("data-treatment"), btn.getAttribute("data-date")||todayISO(), btn.getAttribute("data-time")); }
 
       else if(action==="open-member-form"){
         var mid = btn.getAttribute("data-id");
@@ -1273,7 +1309,7 @@
       }
       else if(kind==="treatment"){
         upsertTreatment({ id: form.getAttribute("data-id")||undefined, memberId: form.getAttribute("data-member")||fd.get("memberId"), episodeId: fd.get("episodeId")||null,
-          name:(fd.get("name")||"").trim(), dose:(fd.get("dose")||"").trim(), frequency: fd.get("frequency"), times: parseTimes(fd.get("times")), startDate: fd.get("startDate")||"", endDate: fd.get("endDate")||"", notes:(fd.get("notes")||"").trim() });
+          name:(fd.get("name")||"").trim(), dose:(fd.get("dose")||"").trim(), frequency: fd.get("frequency"), times: parseTimes(fd.get("times")), startDate: fd.get("startDate")||"", startTime: fd.get("startTime")||"", endDate: fd.get("endDate")||"", notes:(fd.get("notes")||"").trim() });
         ui.modal=null; render();
       }
       else if(kind==="control"){
