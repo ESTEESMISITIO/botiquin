@@ -344,7 +344,8 @@
 
   /* ---------------- helpers ---------------- */
   function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
-  function todayISO(){ return new Date().toISOString().slice(0,10); }
+  function toISODate(d){ return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0"); }
+  function todayISO(){ return toISODate(new Date()); }
   function nowHM(){ var d=new Date(); return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0"); }
   function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); }
   function fmtDate(iso){ if(!iso) return ""; var d=new Date(iso+"T00:00:00"); if(isNaN(d)) return iso; return d.toLocaleDateString("es-ES",{day:"2-digit",month:"short",year:"numeric"}); }
@@ -781,7 +782,7 @@
     if(end > todayS) end = todayS;
     if(start > end) return [];
     var days = []; var cur = new Date(start+"T00:00:00"); var endD = new Date(end+"T00:00:00"); var guard = 0;
-    while(cur <= endD && guard < 400){ days.push(cur.toISOString().slice(0,10)); cur.setDate(cur.getDate()+1); guard++; }
+    while(cur <= endD && guard < 400){ days.push(toISODate(cur)); cur.setDate(cur.getDate()+1); guard++; }
     var CAP = 14;
     var total = days.length;
     if(days.length > CAP) days = days.slice(days.length-CAP);
@@ -1404,7 +1405,7 @@
     if(!days || days<=0 || !startEl.value) return;
     var d = new Date(startEl.value+"T00:00:00");
     d.setDate(d.getDate() + (days-1));
-    endEl.value = d.toISOString().slice(0,10);
+    endEl.value = toISODate(d);
   };
 
   boot();
