@@ -146,7 +146,7 @@
   .badge.recovered{background:var(--teal-soft); color:var(--teal);}
   .badge.control{background:var(--sky-soft); color:var(--sky);}
   .badge.reminder{background:var(--amber-soft); color:var(--amber);}
-  .day-badge{font-family:'IBM Plex Mono',monospace; font-size:11.5px; background:var(--paper-2); color:var(--ink-soft); padding:3px 9px; border-radius:20px; font-weight:500;}
+  .day-badge{font-family:'IBM Plex Mono',monospace; font-size:11.5px; background:var(--paper-2); color:var(--ink-soft); padding:3px 9px; border-radius:20px; font-weight:500; text-decoration:none; display:inline-block;}
 
   .chip{display:inline-flex; align-items:center; gap:5px; padding:6px 12px; border-radius:20px; border:1.5px solid var(--line); background:#fff; font-size:12.5px; font-weight:500; color:var(--ink-soft);}
   .chip.selected{border-color:var(--teal); background:var(--teal-soft); color:var(--teal);}
@@ -708,8 +708,16 @@
       if(actEps.length){ statusHtml = '<span class="status-chip alert">' + catIcon(actEps[0].category) + ' ' + esc(actEps[0].title) + ' · Día ' + episodeDay(actEps[0]) + '</span>'; }
       else if(chronic.length){ statusHtml = '<span class="status-chip med">💊 Tratamiento activo</span>'; }
       else { statusHtml = '<span class="status-chip ok">Sin novedades</span>'; }
+      var latestGRow = growthRecordsForMember(m.id)[0];
+      var growthHtml = "";
+      if(latestGRow && (latestGRow.weight!=null || latestGRow.height!=null)){
+        var gpRow = [];
+        if(latestGRow.weight!=null) gpRow.push(latestGRow.weight+" kg");
+        if(latestGRow.height!=null) gpRow.push(latestGRow.height+" cm");
+        growthHtml = '<span class="mono" style="font-size:11.5px;color:var(--ink-faint);margin-left:auto;padding-left:10px;white-space:nowrap;">' + esc(gpRow.join(" · ")) + '</span>';
+      }
       html += '<div class="family-row"><button class="ep-card-btn" data-action="goto" data-route="member" data-id="' + m.id + '" style="all:unset;cursor:pointer;display:flex;align-items:center;gap:12px;flex:1;">' +
-        '<span class="name" style="display:flex;align-items:center;gap:8px;"><span style="width:9px;height:9px;border-radius:50%;background:' + m.color + ';display:inline-block;"></span>' + esc(m.name) + '</span>' + statusHtml + '</button></div>';
+        '<span class="name" style="display:flex;align-items:center;gap:8px;"><span style="width:9px;height:9px;border-radius:50%;background:' + m.color + ';display:inline-block;"></span>' + esc(m.name) + '</span>' + statusHtml + growthHtml + '</button></div>';
     });
     html += '</div></div></section>';
 
@@ -789,9 +797,17 @@
     var chronic = chronicTreatmentsForMember(mem.id);
     var controls = state.controls.filter(function(c){ return c.memberId===mem.id; }).sort(function(a,b){ return b.date.localeCompare(a.date); });
 
+    var latestGrowth = growthRecordsForMember(mem.id)[0];
+    var growthChip = "";
+    if(latestGrowth && (latestGrowth.weight!=null || latestGrowth.height!=null)){
+      var gParts = [];
+      if(latestGrowth.weight!=null) gParts.push(latestGrowth.weight+" kg");
+      if(latestGrowth.height!=null) gParts.push(latestGrowth.height+" cm");
+      growthChip = '<a href="#growth-' + mem.id + '" class="day-badge" style="margin-left:8px;">⚖️ ' + esc(gParts.join(" · ")) + '</a>';
+    }
     var html = '<div class="page-header"><div class="member-header">' +
       '<span class="member-avatar" style="background:' + mem.color + '">' + esc(initials(mem.name)) + '</span>' +
-      '<div><h1>' + esc(mem.name) + '</h1><div class="sub">' + (mem.relation?esc(mem.relation)+" · ":"") + (age!=null?age+" años":"") + '</div></div>' +
+      '<div><h1>' + esc(mem.name) + '</h1><div class="sub" style="display:flex;align-items:center;flex-wrap:wrap;">' + (mem.relation?esc(mem.relation)+" · ":"") + (age!=null?age+" años":"") + growthChip + '</div></div>' +
       '</div><div class="header-actions">' +
       '<button class="icon-btn" data-action="open-member-form" data-id="' + mem.id + '" title="Editar">✎</button>' +
       '<button class="icon-btn" data-action="confirm-delete-member" data-id="' + mem.id + '" title="Eliminar">✕</button>' +
@@ -821,11 +837,19 @@
           '</button><span class="day-badge">Día ' + episodeDay(ep) + '</span></div>';
       });
       pastEps.forEach(function(ep){
+        var epMaxT = maxTemperature(ep.id);
+        var epSyms = distinctSymptomNames(ep.id);
+        var epTreats = treatmentsForEpisode(ep.id);
+        var synopsis = [];
+        if(epSyms.length) synopsis.push(epSyms.slice(0,3).join(", ") + (epSyms.length>3?"…":""));
+        if(epMaxT!=null && isFinite(epMaxT)) synopsis.push("máx " + epMaxT + "°C");
+        if(epTreats.length) synopsis.push(epTreats.map(function(t){return t.name;}).slice(0,2).join(", ") + (epTreats.length>2?"…":""));
         html += '<div class="ep-card"><button class="ep-card-btn" data-action="goto" data-route="episode" data-id="' + ep.id + '">' +
           '<span class="ep-icon" style="background:var(--teal-soft);">' + catIcon(ep.category) + '</span>' +
           '<span class="ep-main"><span class="ep-title">' + esc(ep.title) + ' <span class="badge recovered" style="margin-left:4px;">Recuperado</span></span>' +
-          '<span class="ep-sub">' + fmtDateShort(ep.startDate) + ' – ' + fmtDateShort(ep.endDate) + ' · ' + (daysBetween(ep.startDate,ep.endDate)+1) + ' días</span></span>' +
-          '</button></div>';
+          '<span class="ep-sub">' + fmtDateShort(ep.startDate) + ' – ' + fmtDateShort(ep.endDate) + ' · ' + (daysBetween(ep.startDate,ep.endDate)+1) + ' días</span>' +
+          (synopsis.length ? '<span class="ep-sub" style="display:block;margin-top:2px;">' + esc(synopsis.join(" · ")) + '</span>' : '') +
+          '</span></button></div>';
       });
     }
     html += '</section>';
@@ -843,7 +867,7 @@
 
     // Peso y talla
     var growth = growthRecordsForMember(mem.id);
-    html += '<section class="block"><div class="block-title"><h2>Peso y talla</h2><div style="display:flex;gap:6px;">' +
+    html += '<section class="block" id="growth-' + mem.id + '"><div class="block-title"><h2>Peso y talla</h2><div style="display:flex;gap:6px;">' +
       '<button class="btn small subtle" data-action="open-growth-import-form" data-member="' + mem.id + '">Importar</button>' +
       '<button class="btn small subtle" data-action="open-growth-form" data-member="' + mem.id + '">+ Registro</button></div></div>';
     if(growth.length===0){
