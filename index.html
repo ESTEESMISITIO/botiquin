@@ -592,6 +592,37 @@
   }
   function deleteGrowthRecord(id){ state.growthRecords = state.growthRecords.filter(function(g){ return g.id!==id; }); saveState(); }
   function growthRecordsForMember(id){ return state.growthRecords.filter(function(g){ return g.memberId===id; }).sort(function(a,b){ return b.date.localeCompare(a.date); }); }
+  function parseFlexibleDate(str){
+    str = (str||"").trim();
+    var m = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+    if(m) return m[1]+"-"+String(m[2]).padStart(2,"0")+"-"+String(m[3]).padStart(2,"0");
+    m = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+    if(m) return m[3]+"-"+String(m[2]).padStart(2,"0")+"-"+String(m[1]).padStart(2,"0");
+    return null;
+  }
+  function importGrowthRecords(memberId, text){
+    var lines = (text||"").split(/\r?\n/).map(function(l){return l.trim();}).filter(Boolean);
+    var added=0, skipped=0, badSamples=[];
+    lines.forEach(function(line){
+      var parts = line.split(/\t|,/).map(function(p){return p.trim();});
+      var dateISO = parseFlexibleDate(parts[0]);
+      var wRaw = parts[1]!==undefined ? parts[1].replace(",",".") : "";
+      var hRaw = parts[2]!==undefined ? parts[2].replace(",",".") : "";
+      var w = wRaw!=="" ? parseFloat(wRaw) : null;
+      var h = hRaw!=="" ? parseFloat(hRaw) : null;
+      var notes = parts.slice(3).join(", ").trim();
+      var wOk = (w==null) || !isNaN(w);
+      var hOk = (h==null) || !isNaN(h);
+      if(!dateISO || !wOk || !hOk || (w==null && h==null)){
+        skipped++; if(badSamples.length<3) badSamples.push(line);
+        return;
+      }
+      state.growthRecords.push({ id:uid(), memberId:memberId, date:dateISO, weight:w, height:h, notes:notes||"" });
+      added++;
+    });
+    saveState();
+    return { added:added, skipped:skipped, badSamples:badSamples };
+  }
 
   /* ================= RENDER ================= */
   function render(){
@@ -785,7 +816,9 @@
 
     // Peso y talla
     var growth = growthRecordsForMember(mem.id);
-    html += '<section class="block"><div class="block-title"><h2>Peso y talla</h2><button class="btn small subtle" data-action="open-growth-form" data-member="' + mem.id + '">+ Registro</button></div>';
+    html += '<section class="block"><div class="block-title"><h2>Peso y talla</h2><div style="display:flex;gap:6px;">' +
+      '<button class="btn small subtle" data-action="open-growth-import-form" data-member="' + mem.id + '">Importar</button>' +
+      '<button class="btn small subtle" data-action="open-growth-form" data-member="' + mem.id + '">+ Registro</button></div></div>';
     if(growth.length===0){
       html += '<div class="empty">Sin registros de peso y talla todavía.</div>';
     } else {
@@ -1052,6 +1085,8 @@
     else if(m.type==="treatment") inner = renderTreatmentForm(m);
     else if(m.type==="control") inner = renderControlForm(m);
     else if(m.type==="growth") inner = renderGrowthForm(m);
+    else if(m.type==="growth-import") inner = renderGrowthImportForm(m);
+    else if(m.type==="info") inner = renderInfoModal(m);
     else if(m.type==="action-chooser") inner = renderActionChooser(m);
     else if(m.type==="ev-temperature") inner = renderTempForm(m);
     else if(m.type==="ev-symptom") inner = renderSymptomForm(m);
@@ -1156,6 +1191,22 @@
       '<div class="hint" style="margin:-6px 0 14px;">Podés cargar solo uno de los dos si no tenés el otro dato.</div>' +
       '<div class="field"><label>Notas (opcional)</label><textarea name="notes" placeholder="Ej. control de los 12 meses">' + esc(d.notes||"") + '</textarea></div>' +
       '<div class="modal-actions"><button type="button" class="btn ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn">Guardar</button></div></form></div>';
+  }
+
+  function renderGrowthImportForm(m){
+    var d = m.data || {};
+    return '<div class="modal" data-stop="1"><h3>Importar historial de peso y talla</h3>' +
+      '<div class="modal-sub">Pegá una línea por registro. Podés copiar y pegar directo desde una planilla.</div>' +
+      '<form data-form="growth-import" data-member="' + (d.memberId||"") + '">' +
+      '<div class="field"><label>Fecha, peso (kg), talla (cm)</label><textarea name="bulk" rows="8" placeholder="fecha, peso, talla" style="font-family:IBM Plex Mono,monospace;font-size:12.5px;"></textarea>' +
+      '<div class="hint">Ejemplo: <span class="mono">2024-03-10, 3.2, 49</span> — separá con coma o tabulación. Fechas en AAAA-MM-DD o DD-MM-AAAA. Dejá vacío un campo si no tenés ese dato (ej. <span class="mono">2024-06-10, 6.1,</span>).</div></div>' +
+      '<div class="modal-actions"><button type="button" class="btn ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn">Importar</button></div></form></div>';
+  }
+
+  function renderInfoModal(m){
+    return '<div class="modal" data-stop="1"><h3>' + esc(m.data.title||"Listo") + '</h3><p class="confirm-msg">' + esc(m.data.message) + '</p>' +
+      (m.data.detail ? '<div class="hint" style="margin-top:8px;">' + esc(m.data.detail) + '</div>' : '') +
+      '<div class="modal-actions"><button class="btn" data-action="close-modal">Cerrar</button></div></div>';
   }
 
   function renderActionChooser(m){
@@ -1351,6 +1402,10 @@
         ui.modal = { type:"growth", data: gdata };
         render();
       }
+      else if(action==="open-growth-import-form"){
+        ui.modal = { type:"growth-import", data:{ memberId: btn.getAttribute("data-member")||"" } };
+        render();
+      }
       else if(action==="confirm-delete-growth"){
         var ggid = btn.getAttribute("data-id");
         ui.modal = { type:"confirm", data:{ message:"Se eliminará este registro de peso y talla.", run:function(){ deleteGrowthRecord(ggid); } } };
@@ -1454,6 +1509,14 @@
         var wVal = fd.get("weight"); var hVal = fd.get("height");
         upsertGrowthRecord({ id: form.getAttribute("data-id")||undefined, memberId: form.getAttribute("data-member")||fd.get("memberId"), date: fd.get("date"), weight: wVal?parseFloat(wVal):null, height: hVal?parseFloat(hVal):null, notes:(fd.get("notes")||"").trim() });
         ui.modal=null; render();
+      }
+      else if(kind==="growth-import"){
+        var giMember = form.getAttribute("data-member");
+        var result = importGrowthRecords(giMember, fd.get("bulk")||"");
+        var msg = result.added + (result.added===1?" registro agregado.":" registros agregados.");
+        var detail = result.skipped ? result.skipped + (result.skipped===1?" línea no se pudo leer":" líneas no se pudieron leer") + (result.badSamples.length?": "+result.badSamples.join(" | "):"") : "";
+        ui.modal = { type:"info", data:{ title:"Importación completa", message: msg, detail: detail || null } };
+        render();
       }
       else if(kind==="ev-temperature"){
         var epId = form.getAttribute("data-episode"); var epx = getEpisode(epId); var evId1 = form.getAttribute("data-id");
