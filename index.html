@@ -364,6 +364,55 @@
     var y = Math.floor(months/12), m = months%12;
     return y+" a" + (m?" "+m+"m":"");
   }
+  function svgMultiLineChart(series, opts){
+    series = series.filter(function(s){ return s.points.length>0; });
+    if(series.length<2) return "";
+    var W=300,H=130,padL=32,padR=10,padT=10,padB=22;
+    var allPts = [].concat.apply([], series.map(function(s){return s.points;}));
+    var xs=allPts.map(function(p){return p.x;}), ys=allPts.map(function(p){return p.y;});
+    var xMin=Math.min.apply(null,xs), xMax=Math.max.apply(null,xs);
+    var yMin=Math.min.apply(null,ys), yMax=Math.max.apply(null,ys);
+    if(xMax===xMin) xMax=xMin+1;
+    if(yMax===yMin){ yMax=yMin+1; yMin=yMin-1; }
+    var yPad=(yMax-yMin)*0.15; yMin-=yPad; yMax+=yPad;
+    function sx(x){ return padL + (x-xMin)/(xMax-xMin)*(W-padL-padR); }
+    function sy(y){ return H-padB - (y-yMin)/(yMax-yMin)*(H-padT-padB); }
+    var linesHtml = series.map(function(s){
+      var sorted = s.points.slice().sort(function(a,b){return a.x-b.x;});
+      var pathPts = sorted.map(function(p){ return sx(p.x).toFixed(1)+","+sy(p.y).toFixed(1); }).join(" ");
+      var dots = sorted.map(function(p){ return '<circle cx="'+sx(p.x).toFixed(1)+'" cy="'+sy(p.y).toFixed(1)+'" r="3" style="fill:'+s.color+'"></circle>'; }).join("");
+      var poly = sorted.length>1 ? '<polyline points="'+pathPts+'" style="fill:none;stroke:'+s.color+';stroke-width:2;"></polyline>' : "";
+      return poly + dots;
+    }).join("");
+    var legend = series.map(function(s){ return '<span style="display:inline-flex;align-items:center;gap:5px;margin-right:12px;font-size:11px;color:var(--ink-soft);"><span style="width:8px;height:8px;border-radius:50%;background:'+s.color+';display:inline-block;"></span>'+esc(s.name)+'</span>'; }).join("");
+    return '<div style="margin-bottom:18px;">' +
+      '<div style="font-size:11.5px;font-weight:600;color:var(--ink-soft);margin-bottom:4px;">' + esc(opts.title) + '</div>' +
+      '<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;max-width:360px;height:auto;display:block;">' +
+      '<line x1="'+padL+'" y1="'+(H-padB)+'" x2="'+(W-padR)+'" y2="'+(H-padB)+'" style="stroke:var(--line);stroke-width:1;"></line>' +
+      linesHtml +
+      '<text x="'+padL+'" y="'+(H-4)+'" style="font-size:9px;fill:var(--ink-faint);font-family:IBM Plex Mono,monospace;">' + esc(fmtAge(xMin)) + '</text>' +
+      '<text x="'+(W-padR)+'" y="'+(H-4)+'" text-anchor="end" style="font-size:9px;fill:var(--ink-faint);font-family:IBM Plex Mono,monospace;">' + esc(fmtAge(xMax)) + '</text>' +
+      '<text x="2" y="'+(padT+4)+'" style="font-size:9px;fill:var(--ink-faint);font-family:IBM Plex Mono,monospace;">' + yMax.toFixed(1) + '</text>' +
+      '<text x="2" y="'+(H-padB)+'" style="font-size:9px;fill:var(--ink-faint);font-family:IBM Plex Mono,monospace;">' + yMin.toFixed(1) + '</text>' +
+      '</svg>' +
+      '<div style="margin-top:6px;">' + legend + '</div>' +
+      '</div>';
+  }
+  function renderFamilyGrowthComparison(){
+    var weightSeries = [], heightSeries = [];
+    state.members.forEach(function(m){
+      if(!m.birthdate) return;
+      var recs = growthRecordsForMember(m.id);
+      var wPts = recs.filter(function(r){return r.weight!=null;}).map(function(r){return {x:ageInMonths(m.birthdate,r.date), y:r.weight};});
+      var hPts = recs.filter(function(r){return r.height!=null;}).map(function(r){return {x:ageInMonths(m.birthdate,r.date), y:r.height};});
+      if(wPts.length) weightSeries.push({name:m.name, color:m.color, points:wPts});
+      if(hPts.length) heightSeries.push({name:m.name, color:m.color, points:hPts});
+    });
+    var w = svgMultiLineChart(weightSeries, {title:"Peso vs. edad"});
+    var h = svgMultiLineChart(heightSeries, {title:"Talla vs. edad"});
+    if(!w && !h) return "";
+    return '<section class="block"><div class="block-title"><h2>Comparativo entre integrantes</h2></div><div class="card">' + w + h + '</div></section>';
+  }
   function getMember(id){ return state.members.find(function(m){ return m.id===id; }); }
   function getEpisode(id){ return state.episodes.find(function(e){ return e.id===id; }); }
   function getTreatment(id){ return state.treatments.find(function(t){ return t.id===id; }); }
@@ -703,6 +752,8 @@
       html += '</div></div>';
     }
     html += '</section>';
+
+    html += renderFamilyGrowthComparison();
 
     // stats strip
     var totalTreat = state.treatments.filter(function(t){ return isTreatmentActive(t); }).length;
