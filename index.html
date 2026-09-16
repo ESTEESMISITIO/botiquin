@@ -330,12 +330,28 @@
       if(res.data && res.data.data){ Object.assign(state, res.data.data); }
     });
   }
+  function showSaveError(){
+    var t = document.getElementById("busy-toast");
+    if(!t) return;
+    t.style.display = "flex";
+    t.style.background = "var(--clay)";
+    t.innerHTML = "⚠️ No se pudo guardar. Revisá tu conexión.";
+    setTimeout(function(){
+      t.style.display = "none";
+      t.style.background = "";
+      t.innerHTML = '<span class="spin"></span>Guardando…';
+    }, 4500);
+  }
   function saveState(){
     if(!familyId) return Promise.resolve();
     setBusy(true);
     return sb.from("family_data").upsert({ family_id: familyId, data: state, updated_at: new Date().toISOString() }, { onConflict: "family_id" }).then(function(res){
       setBusy(false);
-      if(res.error) console.error("No se pudo guardar", res.error);
+      if(res.error){ console.error("No se pudo guardar", res.error); showSaveError(); }
+    }, function(err){
+      setBusy(false);
+      console.error("No se pudo guardar", err);
+      showSaveError();
     });
   }
 
@@ -1367,7 +1383,6 @@
     var app = document.getElementById("app");
 
     app.onclick = function(e){
-      if(busy) return;
       var overlayEl = e.target.closest(".overlay");
       if(overlayEl && e.target===overlayEl){ ui.modal=null; ui.symptomDraft=[]; render(); return; }
 
@@ -1554,7 +1569,6 @@
 
     app.onsubmit = function(e){
       e.preventDefault();
-      if(busy) return;
       var form = e.target;
       var kind = form.getAttribute("data-form");
       var fd = new FormData(form);
