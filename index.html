@@ -294,7 +294,7 @@
   var FREQUENCY_OPTIONS = ["Cada 6 horas","Cada 8 horas","Cada 12 horas","Una vez al día","Dos veces al día","Tres veces al día","Días alternos","Semanal","Horarios específicos","Según necesidad"];
   var EVENT_ICON = {temperature:"🌡️", symptom:"🤒", medication:"💊", note:"📝", consultation:"🩺"};
 
-  var state = { members: [], episodes: [], episodeEvents: [], treatments: [], medicationLogs: [], controls: [] };
+  var state = { members: [], episodes: [], episodeEvents: [], treatments: [], medicationLogs: [], controls: [], growthRecords: [] };
   var ui = { route: {name:"inicio"}, modal: null, symptomDraft: [] };
 
   /* ---------------- storage ---------------- */
@@ -473,6 +473,7 @@
     state.treatments = state.treatments.filter(function(t){ return t.memberId!==id; });
     state.medicationLogs = state.medicationLogs.filter(function(l){ return trIds.indexOf(l.treatmentId)===-1; });
     state.controls = state.controls.filter(function(c){ return c.memberId!==id; });
+    state.growthRecords = state.growthRecords.filter(function(g){ return g.memberId!==id; });
     if(ui.route.name==="member" && ui.route.id===id) ui.route={name:"inicio"};
     saveState();
   }
@@ -534,6 +535,13 @@
     saveState();
   }
   function deleteControl(id){ state.controls = state.controls.filter(function(c){ return c.id!==id; }); saveState(); }
+  function upsertGrowthRecord(data){
+    if(data.id){ Object.assign(state.growthRecords.find(function(g){ return g.id===data.id; }), data); }
+    else { data.id = uid(); state.growthRecords.push(data); }
+    saveState();
+  }
+  function deleteGrowthRecord(id){ state.growthRecords = state.growthRecords.filter(function(g){ return g.id!==id; }); saveState(); }
+  function growthRecordsForMember(id){ return state.growthRecords.filter(function(g){ return g.memberId===id; }).sort(function(a,b){ return b.date.localeCompare(a.date); }); }
 
   /* ================= RENDER ================= */
   function render(){
@@ -722,6 +730,32 @@
       html += '<div class="card">';
       chronic.forEach(function(t){ html += renderTreatmentRow(t); });
       html += '</div>';
+    }
+    html += '</section>';
+
+    // Peso y talla
+    var growth = growthRecordsForMember(mem.id);
+    html += '<section class="block"><div class="block-title"><h2>Peso y talla</h2><button class="btn small subtle" data-action="open-growth-form" data-member="' + mem.id + '">+ Registro</button></div>';
+    if(growth.length===0){
+      html += '<div class="empty">Sin registros de peso y talla todavía.</div>';
+    } else {
+      html += '<div class="card"><div class="list-simple">';
+      growth.forEach(function(g, idx){
+        var prev = growth[idx+1];
+        var wDelta = (g.weight!=null && prev && prev.weight!=null) ? (g.weight - prev.weight) : null;
+        var hDelta = (g.height!=null && prev && prev.height!=null) ? (g.height - prev.height) : null;
+        html += '<div class="li-row"><span class="li-dot" style="background:var(--mauve);"></span>' +
+          '<div class="li-main"><div class="li-title">' +
+          (g.weight!=null ? g.weight+' kg' : '') + (g.weight!=null && g.height!=null ? ' · ' : '') + (g.height!=null ? g.height+' cm' : '') +
+          '</div><div class="li-sub">' +
+          (wDelta!=null ? (wDelta>=0?'+':'')+wDelta.toFixed(2)+' kg' : '') + (wDelta!=null && hDelta!=null ? ' · ' : '') + (hDelta!=null ? (hDelta>=0?'+':'')+hDelta.toFixed(1)+' cm' : '') +
+          (g.notes ? ((wDelta!=null||hDelta!=null)?' · ':'') + esc(g.notes) : '') +
+          '</div></div>' +
+          '<div class="li-date">' + fmtDateShort(g.date) + '</div>' +
+          '<div class="t-actions"><button class="icon-btn" data-action="open-growth-form" data-id="' + g.id + '" title="Editar">✎</button>' +
+          '<button class="icon-btn" data-action="confirm-delete-growth" data-id="' + g.id + '" title="Eliminar">✕</button></div></div>';
+      });
+      html += '</div></div>';
     }
     html += '</section>';
 
@@ -959,6 +993,7 @@
     else if(m.type==="episode") inner = renderEpisodeForm(m);
     else if(m.type==="treatment") inner = renderTreatmentForm(m);
     else if(m.type==="control") inner = renderControlForm(m);
+    else if(m.type==="growth") inner = renderGrowthForm(m);
     else if(m.type==="action-chooser") inner = renderActionChooser(m);
     else if(m.type==="ev-temperature") inner = renderTempForm(m);
     else if(m.type==="ev-symptom") inner = renderSymptomForm(m);
@@ -1050,6 +1085,18 @@
       '<div class="field"><label>Lugar</label><input type="text" name="place" value="' + esc(d.place||"") + '"></div></div>' +
       '<div class="field"><label>Próximo control (opcional)</label><input type="date" name="nextControlDate" value="' + esc(d.nextControlDate||"") + '"></div>' +
       '<div class="field"><label>Notas</label><textarea name="notes">' + esc(d.notes||"") + '</textarea></div>' +
+      '<div class="modal-actions"><button type="button" class="btn ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn">Guardar</button></div></form></div>';
+  }
+
+  function renderGrowthForm(m){
+    var d = m.data || {};
+    return '<div class="modal" data-stop="1"><h3>' + (d.id?"Editar registro":"Nuevo registro de peso y talla") + '</h3>' +
+      '<form data-form="growth" data-id="' + (d.id||"") + '" data-member="' + (d.memberId||"") + '">' +
+      '<div class="field"><label>Fecha</label><input type="date" name="date" required value="' + esc(d.date||todayISO()) + '"></div>' +
+      '<div class="field-row"><div class="field"><label>Peso (kg)</label><input type="number" step="0.01" min="0" name="weight" value="' + (d.weight!=null?esc(d.weight):"") + '" placeholder="Ej. 12.4"></div>' +
+      '<div class="field"><label>Talla (cm)</label><input type="number" step="0.1" min="0" name="height" value="' + (d.height!=null?esc(d.height):"") + '" placeholder="Ej. 88.5"></div></div>' +
+      '<div class="hint" style="margin:-6px 0 14px;">Podés cargar solo uno de los dos si no tenés el otro dato.</div>' +
+      '<div class="field"><label>Notas (opcional)</label><textarea name="notes" placeholder="Ej. control de los 12 meses">' + esc(d.notes||"") + '</textarea></div>' +
       '<div class="modal-actions"><button type="button" class="btn ghost" data-action="close-modal">Cancelar</button><button type="submit" class="btn">Guardar</button></div></form></div>';
   }
 
@@ -1240,6 +1287,17 @@
         ui.modal = { type:"confirm", data:{ message:"Se eliminará este control médico.", run:function(){ deleteControl(ccid); } } };
         render();
       }
+      else if(action==="open-growth-form"){
+        var gid = btn.getAttribute("data-id");
+        var gdata = gid ? Object.assign({}, state.growthRecords.find(function(x){return x.id===gid;})) : { memberId: btn.getAttribute("data-member")||"" };
+        ui.modal = { type:"growth", data: gdata };
+        render();
+      }
+      else if(action==="confirm-delete-growth"){
+        var ggid = btn.getAttribute("data-id");
+        ui.modal = { type:"confirm", data:{ message:"Se eliminará este registro de peso y talla.", run:function(){ deleteGrowthRecord(ggid); } } };
+        render();
+      }
 
       else if(action==="do-confirm"){ var fn = ui.modal.data.run; ui.modal=null; fn(); render(); }
 
@@ -1332,6 +1390,11 @@
       }
       else if(kind==="control"){
         upsertControl({ id: form.getAttribute("data-id")||undefined, memberId: form.getAttribute("data-member")||fd.get("memberId"), date: fd.get("date"), time: fd.get("time")||"", specialty:(fd.get("specialty")||"").trim(), professional:(fd.get("professional")||"").trim(), place:(fd.get("place")||"").trim(), nextControlDate: fd.get("nextControlDate")||"", notes:(fd.get("notes")||"").trim() });
+        ui.modal=null; render();
+      }
+      else if(kind==="growth"){
+        var wVal = fd.get("weight"); var hVal = fd.get("height");
+        upsertGrowthRecord({ id: form.getAttribute("data-id")||undefined, memberId: form.getAttribute("data-member")||fd.get("memberId"), date: fd.get("date"), weight: wVal?parseFloat(wVal):null, height: hVal?parseFloat(hVal):null, notes:(fd.get("notes")||"").trim() });
         ui.modal=null; render();
       }
       else if(kind==="ev-temperature"){
