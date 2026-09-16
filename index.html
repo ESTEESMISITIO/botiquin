@@ -253,6 +253,10 @@
 
   @media (prefers-reduced-motion: reduce){ *{animation:none !important; transition:none !important;} }
 
+  .gate-wrap{min-height:100vh; display:flex; align-items:center; justify-content:center; padding:20px;}
+  .gate-card{background:var(--card); border-radius:18px; padding:30px 28px; width:100%; max-width:400px; box-shadow:0 20px 60px -12px rgba(0,0,0,0.25);}
+  .gate-sub{font-size:13.5px; color:var(--ink-soft); line-height:1.5; margin-bottom:18px; text-align:center;}
+  .gate-error{background:var(--clay-soft); color:var(--clay); font-size:13px; padding:9px 12px; border-radius:9px; margin-bottom:14px;}
   .busy-toast{
     position:fixed; bottom:20px; right:20px; z-index:100;
     display:flex; align-items:center; gap:9px;
@@ -283,11 +287,15 @@
 <div id="app"></div>
 <div id="busy-toast" class="busy-toast" style="display:none;"><span class="spin"></span>Guardando…</div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 (function(){
   "use strict";
 
-  var STORAGE_KEY = "familia-salud-data-v2";
+  var SUPABASE_URL = "https://dqmlotmbmjjanbpmqnad.supabase.co";
+  var SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRxbWxvdG1ibWpqYW5icG1xbmFkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk1MTgzMjMsImV4cCI6MjEwNTA5NDMyM30.-nNZWwzEcvtisatXD4VL7UxXugcrC2Q-Zz51YsjWi5k";
+  var sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  var familyId = null;
   var PALETTE = ["#2F6B63","#B85347","#5A7C9C","#C97F2E","#8B6C8E","#748A4E"];
   var CATEGORY_SUGGESTIONS = ["Resfrío","Fiebre","Dolor de estómago","Gastroenteritis","Dolor","Alergia","Lesión","Otro"];
   var CATEGORY_ICONS = {"Resfrío":"🤧","Fiebre":"🌡️","Dolor de estómago":"🤢","Gastroenteritis":"🤢","Dolor":"😣","Alergia":"🤧","Lesión":"🤕","Otro":"🤒"};
@@ -298,17 +306,7 @@
   var state = { members: [], episodes: [], episodeEvents: [], treatments: [], medicationLogs: [], controls: [], growthRecords: [] };
   var ui = { route: {name:"inicio"}, modal: null, symptomDraft: [], growthExpanded: {} };
 
-  /* ---------------- storage ---------------- */
-  function storageAvailable(){
-    try{
-      var t = "__botiquin_test__";
-      window.localStorage.setItem(t, "1");
-      window.localStorage.removeItem(t);
-      return true;
-    } catch(e){ return false; }
-  }
-  var STORAGE_OK = storageAvailable();
-
+  /* ---------------- storage (Supabase) ---------------- */
   var busy = false;
   var busyToken = 0;
   function setBusy(v){
@@ -326,21 +324,37 @@
   }
 
   function loadState(){
-    if(!STORAGE_OK) return Promise.resolve();
-    try{
-      var raw = window.localStorage.getItem(STORAGE_KEY);
-      if(raw){ try{ var p = JSON.parse(raw); Object.assign(state, p); }catch(e){} }
-    } catch(e){}
-    return Promise.resolve();
+    if(!familyId) return Promise.resolve();
+    return sb.from("family_data").select("data").eq("family_id", familyId).maybeSingle().then(function(res){
+      if(res.error){ console.error("No se pudo cargar", res.error); return; }
+      if(res.data && res.data.data){ Object.assign(state, res.data.data); }
+    });
   }
   function saveState(){
-    if(!STORAGE_OK) return Promise.resolve();
+    if(!familyId) return Promise.resolve();
     setBusy(true);
-    try{
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    return sb.from("family_data").upsert({ family_id: familyId, data: state, updated_at: new Date().toISOString() }, { onConflict: "family_id" }).then(function(res){
       setBusy(false);
-    } catch(e){ console.error("No se pudo guardar", e); setBusy(false); }
-    return Promise.resolve();
+      if(res.error) console.error("No se pudo guardar", res.error);
+    });
+  }
+
+  /* ---------------- auth + familia ---------------- */
+  function ensureAnonSession(){
+    return sb.auth.getSession().then(function(res){
+      if(res.data && res.data.session) return res.data.session;
+      return sb.auth.signInAnonymously().then(function(r){
+        if(r.error) throw r.error;
+        return r.data.session;
+      });
+    });
+  }
+  function resolveFamily(){
+    return sb.from("family_members").select("family_id").limit(1).then(function(res){
+      if(res.error) throw res.error;
+      if(res.data && res.data.length) return res.data[0].family_id;
+      return null;
+    });
   }
 
   /* ---------------- helpers ---------------- */
@@ -675,7 +689,7 @@
     });
     html += '<button class="rail-add" data-action="open-member-form"><span>+</span> Agregar familiar</button>';
     html += '<div class="rail-spacer"></div>';
-    html += '<div class="rail-foot' + (STORAGE_OK?'':' warn') + '">' + (STORAGE_OK ? 'Tus datos se guardan en este navegador/dispositivo.' : '⚠️ Este navegador bloqueó el guardado local: los datos se van a perder al cerrar la página.') + '</div>';
+    html += '<div class="rail-foot">☁️ Sincronizado con tu familia.<br><button type="button" data-action="leave-family" style="background:none;border:none;color:var(--clay);text-decoration:underline;cursor:pointer;font-size:11px;padding:4px 0 0;">Salir de esta familia</button></div>';
     html += '</div>';
     return html;
   }
@@ -1471,6 +1485,10 @@
       }
 
       else if(action==="do-confirm"){ var fn = ui.modal.data.run; ui.modal=null; fn(); render(); }
+      else if(action==="leave-family"){
+        ui.modal = { type:"confirm", data:{ message:"Vas a salir de esta familia en este dispositivo. Vas a necesitar el código para volver a entrar.", run:function(){ sb.auth.signOut().then(function(){ location.reload(); }); } } };
+        render();
+      }
 
       // in-modal micro interactions
       if(btn.hasAttribute("data-swatch")){
@@ -1630,13 +1648,68 @@
     };
   }
 
+  /* ---------------- gate: crear / unirse a una familia ---------------- */
+  function renderLoading(msg){
+    document.getElementById("app").innerHTML =
+      '<div class="gate-wrap"><div class="gate-card">' +
+      '<div class="rail-brand" style="padding:0 0 10px;justify-content:center;"><span class="dot"></span>Botiquín</div>' +
+      '<p class="gate-sub" style="text-align:center;">' + esc(msg||"Conectando…") + '</p>' +
+      '</div></div>';
+  }
+  function renderGate(opts){
+    opts = opts || {};
+    document.getElementById("app").innerHTML =
+      '<div class="gate-wrap"><div class="gate-card">' +
+      '<div class="rail-brand" style="padding:0 0 6px;justify-content:center;"><span class="dot"></span>Botiquín</div>' +
+      '<p class="gate-sub">Para sincronizar entre dispositivos, cada uno se une con el código de tu familia.</p>' +
+      (opts.error ? '<div class="gate-error">' + esc(opts.error) + '</div>' : '') +
+      '<div class="field"><label>Código de familia</label><input type="text" id="gate-code" placeholder="Una frase que solo ustedes conozcan" autofocus></div>' +
+      '<div class="modal-actions" style="justify-content:stretch;gap:8px;">' +
+      '<button type="button" class="btn ghost" style="flex:1;" id="gate-join">Unirme con este código</button>' +
+      '<button type="button" class="btn" style="flex:1;" id="gate-create">Crear familia nueva</button>' +
+      '</div>' +
+      '<div class="hint" style="margin-top:14px;">¿Primera vez? Elegí un código y tocá "Crear familia nueva". En los demás dispositivos, usá "Unirme" con ese mismo código.</div>' +
+      '</div></div>';
+    document.getElementById("gate-create").onclick = function(){ submitGate("create"); };
+    document.getElementById("gate-join").onclick = function(){ submitGate("join"); };
+    document.getElementById("gate-code").onkeydown = function(e){ if(e.key==="Enter") submitGate("join"); };
+  }
+  function submitGate(mode){
+    var input = document.getElementById("gate-code");
+    var code = (input.value||"").trim();
+    if(!code){ renderGate({error:"Escribí un código primero."}); return; }
+    renderLoading(mode==="create" ? "Creando tu familia…" : "Uniéndote…");
+    var rpcName = mode==="create" ? "create_family" : "join_family";
+    sb.rpc(rpcName, { input_code: code }).then(function(res){
+      if(res.error){
+        renderGate({ error: mode==="create" ? "No se pudo crear la familia. Probá de nuevo." : "Código incorrecto o la familia no existe." });
+        return;
+      }
+      familyId = res.data;
+      startApp();
+    });
+  }
+
   /* ---------------- boot ---------------- */
-  function boot(){
+  function startApp(){
     render();
     loadState().then(function(){
       if(normalizeTreatmentTimes()) saveState();
       render();
     });
+  }
+  function boot(){
+    renderLoading();
+    ensureAnonSession()
+      .then(function(){ return resolveFamily(); })
+      .then(function(fid){
+        if(fid){ familyId = fid; startApp(); }
+        else { renderGate(); }
+      })
+      .catch(function(err){
+        console.error(err);
+        renderGate({ error: "No se pudo conectar. Revisá tu conexión a internet e intentá de nuevo." });
+      });
   }
   window.__botiquinCalcEnd = function(){
     var startEl = document.getElementById("tf-start-date");
