@@ -351,6 +351,56 @@
   function fmtDate(iso){ if(!iso) return ""; var d=new Date(iso+"T00:00:00"); if(isNaN(d)) return iso; return d.toLocaleDateString("es-ES",{day:"2-digit",month:"short",year:"numeric"}); }
   function fmtDateShort(iso){ if(!iso) return ""; var d=new Date(iso+"T00:00:00"); if(isNaN(d)) return iso; return d.toLocaleDateString("es-ES",{day:"2-digit",month:"short"}); }
   function ageFromBirthdate(iso){ if(!iso) return null; var b=new Date(iso+"T00:00:00"); if(isNaN(b)) return null; var t=new Date(); var age=t.getFullYear()-b.getFullYear(); var m=t.getMonth()-b.getMonth(); if(m<0||(m===0&&t.getDate()<b.getDate())) age--; return age; }
+  function ageInMonths(birthISO, dateISO){
+    var b = new Date(birthISO+"T00:00:00"), d = new Date(dateISO+"T00:00:00");
+    if(isNaN(b) || isNaN(d)) return null;
+    var months = (d.getFullYear()-b.getFullYear())*12 + (d.getMonth()-b.getMonth());
+    if(d.getDate() < b.getDate()) months--;
+    return Math.max(0, months);
+  }
+  function fmtAge(months){
+    if(months==null) return "";
+    if(months<24) return months+" m";
+    var y = Math.floor(months/12), m = months%12;
+    return y+" a" + (m?" "+m+"m":"");
+  }
+  function svgLineChart(points, opts){
+    var W=280, H=110, padL=30, padR=8, padT=10, padB=20;
+    var xs=points.map(function(p){return p.x;}), ys=points.map(function(p){return p.y;});
+    var xMin=Math.min.apply(null,xs), xMax=Math.max.apply(null,xs);
+    var yMin=Math.min.apply(null,ys), yMax=Math.max.apply(null,ys);
+    if(xMax===xMin) xMax=xMin+1;
+    if(yMax===yMin){ yMax=yMin+1; yMin=yMin-1; }
+    var yPad=(yMax-yMin)*0.18; yMin-=yPad; yMax+=yPad;
+    function sx(x){ return padL + (x-xMin)/(xMax-xMin) * (W-padL-padR); }
+    function sy(y){ return H-padB - (y-yMin)/(yMax-yMin) * (H-padT-padB); }
+    var pathPts = points.map(function(p){ return sx(p.x).toFixed(1)+","+sy(p.y).toFixed(1); }).join(" ");
+    var dots = points.map(function(p){ return '<circle cx="'+sx(p.x).toFixed(1)+'" cy="'+sy(p.y).toFixed(1)+'" r="3" style="fill:'+opts.color+'"></circle>'; }).join("");
+    var last = points[points.length-1];
+    return '<div style="margin-bottom:14px;">' +
+      '<div style="font-size:11.5px;font-weight:600;color:var(--ink-soft);margin-bottom:4px;">' + esc(opts.title) + '</div>' +
+      '<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;max-width:320px;height:auto;display:block;">' +
+      '<line x1="'+padL+'" y1="'+(H-padB)+'" x2="'+(W-padR)+'" y2="'+(H-padB)+'" style="stroke:var(--line);stroke-width:1;"></line>' +
+      '<polyline points="'+pathPts+'" style="fill:none;stroke:'+opts.color+';stroke-width:2;"></polyline>' +
+      dots +
+      '<text x="'+padL+'" y="'+(H-4)+'" style="font-size:9px;fill:var(--ink-faint);font-family:IBM Plex Mono,monospace;">' + esc(fmtAge(xMin)) + '</text>' +
+      '<text x="'+(W-padR)+'" y="'+(H-4)+'" text-anchor="end" style="font-size:9px;fill:var(--ink-faint);font-family:IBM Plex Mono,monospace;">' + esc(fmtAge(xMax)) + '</text>' +
+      '<text x="2" y="'+(padT+4)+'" style="font-size:9px;fill:var(--ink-faint);font-family:IBM Plex Mono,monospace;">' + yMax.toFixed(1) + '</text>' +
+      '<text x="2" y="'+(H-padB)+'" style="font-size:9px;fill:var(--ink-faint);font-family:IBM Plex Mono,monospace;">' + yMin.toFixed(1) + '</text>' +
+      '</svg>' +
+      '<div class="hint" style="margin-top:2px;">Último: ' + last.y + ' ' + esc(opts.unit) + ' a los ' + esc(fmtAge(last.x)) + '</div>' +
+      '</div>';
+  }
+  function renderGrowthChart(records, birthdate){
+    if(!birthdate) return "";
+    var asc = records.slice().reverse();
+    var weightPts = asc.filter(function(r){return r.weight!=null;}).map(function(r){return {x:ageInMonths(birthdate,r.date), y:r.weight};});
+    var heightPts = asc.filter(function(r){return r.height!=null;}).map(function(r){return {x:ageInMonths(birthdate,r.date), y:r.height};});
+    var html = "";
+    if(weightPts.length>=2) html += svgLineChart(weightPts, {color:"var(--teal)", unit:"kg", title:"Peso vs. edad"});
+    if(heightPts.length>=2) html += svgLineChart(heightPts, {color:"var(--sky)", unit:"cm", title:"Talla vs. edad"});
+    return html;
+  }
   function getMember(id){ return state.members.find(function(m){ return m.id===id; }); }
   function getEpisode(id){ return state.episodes.find(function(e){ return e.id===id; }); }
   function getTreatment(id){ return state.treatments.find(function(t){ return t.id===id; }); }
@@ -739,18 +789,26 @@
     if(growth.length===0){
       html += '<div class="empty">Sin registros de peso y talla todavía.</div>';
     } else {
-      html += '<div class="card"><div class="list-simple">';
+      html += '<div class="card">';
+      if(!mem.birthdate){
+        html += '<div class="hint" style="margin-bottom:12px;">Agregá la fecha de nacimiento de ' + esc(mem.name) + ' (editando el familiar) para ver la evolución según edad.</div>';
+      } else {
+        html += renderGrowthChart(growth, mem.birthdate);
+      }
+      html += '<div class="list-simple">';
       growth.forEach(function(g, idx){
         var prev = growth[idx+1];
         var wDelta = (g.weight!=null && prev && prev.weight!=null) ? (g.weight - prev.weight) : null;
         var hDelta = (g.height!=null && prev && prev.height!=null) ? (g.height - prev.height) : null;
+        var parts = [];
+        if(mem.birthdate){ var am = ageInMonths(mem.birthdate, g.date); if(am!=null) parts.push(fmtAge(am)); }
+        if(wDelta!=null) parts.push((wDelta>=0?'+':'')+wDelta.toFixed(2)+' kg');
+        if(hDelta!=null) parts.push((hDelta>=0?'+':'')+hDelta.toFixed(1)+' cm');
+        if(g.notes) parts.push(esc(g.notes));
         html += '<div class="li-row"><span class="li-dot" style="background:var(--mauve);"></span>' +
           '<div class="li-main"><div class="li-title">' +
           (g.weight!=null ? g.weight+' kg' : '') + (g.weight!=null && g.height!=null ? ' · ' : '') + (g.height!=null ? g.height+' cm' : '') +
-          '</div><div class="li-sub">' +
-          (wDelta!=null ? (wDelta>=0?'+':'')+wDelta.toFixed(2)+' kg' : '') + (wDelta!=null && hDelta!=null ? ' · ' : '') + (hDelta!=null ? (hDelta>=0?'+':'')+hDelta.toFixed(1)+' cm' : '') +
-          (g.notes ? ((wDelta!=null||hDelta!=null)?' · ':'') + esc(g.notes) : '') +
-          '</div></div>' +
+          '</div><div class="li-sub">' + parts.join(" · ") + '</div></div>' +
           '<div class="li-date">' + fmtDateShort(g.date) + '</div>' +
           '<div class="t-actions"><button class="icon-btn" data-action="open-growth-form" data-id="' + g.id + '" title="Editar">✎</button>' +
           '<button class="icon-btn" data-action="confirm-delete-growth" data-id="' + g.id + '" title="Eliminar">✕</button></div></div>';
